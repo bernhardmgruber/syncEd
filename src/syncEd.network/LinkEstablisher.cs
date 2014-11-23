@@ -19,9 +19,9 @@ namespace SyncEd.Network
 
 		const int linkEstablishTimeoutMs = 1000;
 
-		delegate void NewLinkHandler(Peer p);
+		public delegate void NewLinkHandler(Peer p);
 
-		event NewLinkHandler NewLinkEstablished;
+		public event NewLinkHandler NewLinkEstablished;
 
 		/// <summary>
 		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
