@@ -1,1 +1,3 @@
 /src/*.suo
+/src/syncEd.network/obj
+/src/syncEd.network/bin
