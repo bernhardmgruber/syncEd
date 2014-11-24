@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}</ProjectGuid>
+    <ProjectGuid>{DB9B0D6C-EFEF-49A2-9C6D-DC45B66DC315}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SyncEd.Network</RootNamespace>
-    <AssemblyName>SyncEd.Network</AssemblyName>
+    <RootNamespace>SyncEd.Network.Packets</RootNamespace>
+    <AssemblyName>SyncEd.Network.Packets</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -39,16 +39,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LinkControl.cs" />
-    <Compile Include="LinkEstablisher.cs" />
-    <Compile Include="Peer.cs" />
+    <Compile Include="DocumentPacket.cs" />
+    <Compile Include="Packet.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\SyncEd.Network.Packets\SyncEd.Network.Packets.csproj">
-      <Project>{db9b0d6c-efef-49a2-9c6d-dc45b66dc315}</Project>
-      <Name>SyncEd.Network.Packets</Name>
-    </ProjectReference>
+    <Compile Include="QueryDocumentPacket.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

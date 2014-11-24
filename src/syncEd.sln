@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncEd.Network", "syncEd.network\SyncEd.Network.csproj", "{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncEd.Network.Packets", "SyncEd.Network.Packets\SyncEd.Network.Packets.csproj", "{DB9B0D6C-EFEF-49A2-9C6D-DC45B66DC315}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB9B0D6C-EFEF-49A2-9C6D-DC45B66DC315}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB9B0D6C-EFEF-49A2-9C6D-DC45B66DC315}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB9B0D6C-EFEF-49A2-9C6D-DC45B66DC315}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB9B0D6C-EFEF-49A2-9C6D-DC45B66DC315}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
