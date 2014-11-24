@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace SyncEd.Network
 {
-	public delegate void PacketArrivedHandler(Packet p);
+	public delegate void PacketArrivedHandler(Packet packet, Peer peer);
 
 	public class LinkControl
 	{
@@ -21,7 +21,7 @@ namespace SyncEd.Network
 		private List<Peer> peers = new List<Peer>();
 		public IList<Peer> Peers { get { return peers; } }
 
-		private BlockingCollection<Packet> packets = new BlockingCollection<Packet>();
+		private BlockingCollection<Tuple<Packet, Peer>> packets = new BlockingCollection<Tuple<Packet, Peer>>();
 
 		private CancellationTokenSource cancelSrc;
 
@@ -46,7 +46,7 @@ namespace SyncEd.Network
 
 						var f = new BinaryFormatter();
 						var packet = (Packet)f.Deserialize(p.Tcp.GetStream());
-						packets.Add(packet);
+						packets.Add(Tuple.Create(packet, p));
 					}
 
 					p.Tcp.GetStream().Close();
@@ -58,23 +58,47 @@ namespace SyncEd.Network
 			});
 		}
 
-		void Start(string documentName)
+		void SendPacket(Packet p)
+		{
+			packets.Add(Tuple.Create(p, null as Peer));
+		}
+
+		/// <summary>
+		/// Starts the link control system which is responsible for managing links and packets
+		/// </summary>
+		/// <returns>Returns true if a peer could be found for the given document name</returns>
+		bool Start(string documentName)
 		{
 			cancelSrc = new CancellationTokenSource();
 			var token = cancelSrc.Token;
 
-			Establisher.FindPeer(documentName);
+			var peer = Establisher.FindPeer(documentName);
+			if(peer != null)
+				peers.Add(peer);
 			Establisher.ListenForPeers(documentName, token);
 
 			Task.Run(() =>
 			{
 				while (!token.IsCancellationRequested)
 				{
-					var packet = packets.Take(token);
+					var packetAndPeer = packets.Take(token);
+
+					foreach (Peer p in peers)
+					{
+						if(p != null && p != packetAndPeer.Item2)
+						lock (p)
+						{
+							var f = new BinaryFormatter();
+							f.Serialize(p.Tcp.GetStream(), packetAndPeer.Item1);
+						}
+					}
+
 					if (PacketArrived != null)
-						PacketArrived(packet);
+						PacketArrived(packetAndPeer.Item1, packetAndPeer.Item2);
 				}
 			});
+
+			return peer != null;
 		}
 
 		void Stop()
