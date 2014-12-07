@@ -1,10 +1,12 @@
-﻿using System.Windows.Input;
+﻿using System.Collections.Generic;
+using System.Windows.Controls;
+using System.Windows.Input;
 using SyncEd.Document;
 
 namespace SyncEd.Editor
 {
     public class MainWindowViewModel
-    : ViewModelBase
+        : ViewModelBase
     {
         private readonly IDocument document;
 
@@ -33,17 +35,49 @@ namespace SyncEd.Editor
             get { return documentText; }
             set { SetProperty(ref documentText, value); }
         }
-        private string documentText = "Hello, World!\nThis is a text.";
+        private string documentText;
 
-        public ICommand Connect
+        public bool IsConnected
         {
-            get { return null; }
+            get { return isConnected; }
+            set { SetProperty(ref isConnected, value); }
+        }
+        private bool isConnected = false;
+
+
+        public bool CanConnect
+        {
+            get { return canConnect; }
+            set { SetProperty(ref canConnect, value); }
+        }
+        private bool canConnect = true;
+
+        public ICommand ConnectCommand
+        {
+            get { return connectCommand ?? (connectCommand = new RelayCommand(_ => Connect())); }
+        }
+        private ICommand connectCommand;
+
+        public async void Connect()
+        {
+            if (document.IsConnected)
+                return;
+            CanConnect = false;
+
+            IsConnected = await document.Connect(DocumentName);
+            CanConnect = !IsConnected;
         }
 
-        public string ConnectionCommandText
+        public void ChangeText(ICollection<TextChange> changes, UndoAction undoAction)
         {
-            get { return "Connect"; }
+            // TODO
         }
 
+        public void Close()
+        {
+            document.Close();
+            CanConnect = true;
+            IsConnected = false;
+        }
     }
 }

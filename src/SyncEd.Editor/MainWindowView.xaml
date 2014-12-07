@@ -6,26 +6,29 @@
         Title="SyncEd" Height="350" Width="500"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        d:DataContext="{d:DesignInstance Type=editor:MainWindowViewModel}">
+        d:DataContext="{d:DesignInstance Type=editor:MainWindowViewModel}"
+        Closed="OnClosed">
+    <Window.Background>LightSteelBlue</Window.Background>
     <DockPanel>
         <Border DockPanel.Dock="Top" Margin="5,10,5,0" Padding="5">
             <DockPanel HorizontalAlignment="Stretch">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock>Number of Editors:</TextBlock>
                     <TextBlock Margin="5 0 5 0" Text="{Binding NumberOfEditors, Mode=OneWay}"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBox Text="{Binding DocumentName, Mode=TwoWay}" Width="110" Margin="0 0 5 0" />
-                    <Button Command="{Binding Connect}"  Padding="5 0 7 0" Content="{Binding ConnectionCommandText, Mode=OneWay}" />
+                <StackPanel Orientation="Horizontal" Height="25">
+                    <TextBox Text="{Binding DocumentName, Mode=TwoWay}" VerticalContentAlignment="Center" Width="140" Margin="0 0 5 0" />
+                    <Button Command="{Binding ConnectCommand}" IsEnabled="{Binding CanConnect, Mode=OneWay}" Padding="10 0 12 0">Connect</Button>
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <Border Margin="5" Padding="5">
-            <TextBox Text="{Binding DocumentText, Mode=TwoWay}" AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" />
+            <TextBox Text="{Binding DocumentText, Mode=TwoWay}" IsEnabled="{Binding IsConnected, Mode=OneWay}"
+                     TextChanged="TextChanged"
+                     AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" />
         </Border>
     </DockPanel>
-
 </Window>
 
     

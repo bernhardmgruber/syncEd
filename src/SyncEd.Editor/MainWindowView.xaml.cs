@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace SyncEd.Editor
 {
@@ -14,6 +16,16 @@ namespace SyncEd.Editor
         public MainWindowView()
         {
             InitializeComponent();
+        }
+
+        private void TextChanged(object sender, TextChangedEventArgs e)
+        {
+            DataContext.ChangeText(e.Changes, e.UndoAction);
+        }
+
+        private void OnClosed(object sender, EventArgs e)
+        {
+            DataContext.Close();
         }
     }
 }
