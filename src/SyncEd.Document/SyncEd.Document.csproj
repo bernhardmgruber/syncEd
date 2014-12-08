@@ -36,8 +36,15 @@
   <ItemGroup>
     <Compile Include="DocumentTextChangedEventArgs.cs" />
     <Compile Include="IDocument.cs" />
+    <Compile Include="NetworkDocument.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StringBuilderDocument.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">
+      <Project>{dd7c6445-8c14-4143-9281-3680080d02af}</Project>
+      <Name>SyncEd.Network</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

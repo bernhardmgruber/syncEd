@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Threading.Tasks;
-using SyncEd.Document;
+using SyncEd.Network;
 
-namespace SyncEd.Network
+namespace SyncEd.Document
 {
     public class NetworkDocument
         : IDocument
     {
-        private readonly LinkEstablisher linkEstablisher;
+        private readonly INetwork network;
 
-        public NetworkDocument(LinkEstablisher linkEstablisher)
+        public NetworkDocument(INetwork network)
         {
-            this.linkEstablisher = linkEstablisher;
+            this.network = network;
         }
 
         public bool IsConnected { get; private set; }
@@ -22,12 +22,7 @@ namespace SyncEd.Network
                 throw new NotSupportedException();
 
             return Task.Run(() => {
-                var peer = linkEstablisher.FindPeer(documentName);
-                if (peer != null) {
-                    // TODO
-                } else {
-                    // TODO
-                }
+                // TODO
                 return true;
             });
         }
