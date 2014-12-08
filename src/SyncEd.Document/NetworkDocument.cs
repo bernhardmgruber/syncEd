@@ -2,12 +2,14 @@
 using System.Threading.Tasks;
 using SyncEd.Network;
 using SyncEd.Network.Packets;
+using System.Text;
 
 namespace SyncEd.Document
 {
     public class NetworkDocument
         : IDocument
     {
+        private readonly StringBuilder documentText;
         private readonly INetwork network;
 
         public NetworkDocument(INetwork network)
@@ -21,22 +23,26 @@ namespace SyncEd.Document
 
         void network_QueryDocumentPacketArrived(QueryDocumentPacket packet, Peer peer)
         {
-            throw new NotImplementedException();
+            network.SendPacket(new DocumentPacket() { Document = documentText.ToString() });
         }
 
         void network_DocumentPacketArrived(DocumentPacket packet, Peer peer)
         {
-            throw new NotImplementedException();
+            documentText.Clear();
+            documentText.Append(packet.Document);
+            FireTextChanged();
         }
 
         void network_DeleteTextPacketArrived(DeleteTextPacket packet, Peer peer)
         {
-            throw new NotImplementedException();
+            documentText.Remove(packet.Offset, packet.Length);
+            FireTextChanged();
         }
 
         void network_AddTextPacketArrived(AddTextPacket packet, Peer peer)
         {
-            throw new NotImplementedException();
+            documentText.Insert(packet.Offset, packet.Text);
+            FireTextChanged();
         }
 
         public bool IsConnected { get; private set; }
@@ -46,7 +52,12 @@ namespace SyncEd.Document
             if (IsConnected)
                 throw new NotSupportedException();
 
-            return Task.Run(() => network.Start(documentName));
+            var result = Task.Run(() => network.Start(documentName));
+
+            documentText.Clear();
+            FireTextChanged();
+
+            return result;
         }
 
         public Task Close()
@@ -61,6 +72,14 @@ namespace SyncEd.Document
                 network.SendPacket(new AddTextPacket() { Offset = offset, Text = text });
             else
                 network.SendPacket(new DeleteTextPacket() { Offset = offset, Length = length });
+            FireTextChanged();
+        }
+
+        protected void FireTextChanged()
+        {
+            string text = documentText.ToString();
+            if (TextChanged != null)
+                TextChanged(this, new DocumentTextChangedEventArgs(text));
         }
 
         public event EventHandler<DocumentTextChangedEventArgs> TextChanged;

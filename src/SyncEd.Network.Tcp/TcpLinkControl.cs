@@ -97,6 +97,8 @@ namespace SyncEd.Network.Tcp
                 while (!token.IsCancellationRequested) {
                     var packetAndPeer = packets.Take(token);
 
+                    Console.WriteLine("TcpLinkControl: Outgoing: " + packetAndPeer.Item1.ToString());
+
                     foreach (TcpPeer p in peers) {
                         if (p != null && p != packetAndPeer.Item2)
                             lock (p) {
@@ -115,6 +117,8 @@ namespace SyncEd.Network.Tcp
 
         void DispatchObject(object o, Peer peer)
         {
+            Console.WriteLine("TcpLinkControl: Incoming: " + o.ToString());
+
             if (o is AddTextPacket && AddTextPacketArrived != null)
                 AddTextPacketArrived(o as AddTextPacket, peer);
             else if (o is DeleteTextPacket && DeleteTextPacketArrived != null)

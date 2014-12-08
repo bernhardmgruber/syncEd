@@ -40,13 +40,13 @@ namespace SyncEd.Document
             Trace.WriteLine(string.Format("ChangeText [{0} {1}]: {2}", offset, length, text));
             documentText.Remove(offset, length);
             documentText.Insert(offset, text);
-            OnTextChanged();
+            FireTextChanged();
 
         }
 
         public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
 
-        protected void OnTextChanged()
+        protected void FireTextChanged()
         {
             string text = documentText.ToString();
             if (TextChanged != null)
