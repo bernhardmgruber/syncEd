@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace SyncEd.Document
 {
@@ -7,5 +8,8 @@ namespace SyncEd.Document
         bool IsConnected { get; }
         Task<bool> Connect(string documentName);
         Task Close();
+
+        void ChangeText(int offset, int length, string text);
+        event EventHandler<DocumentTextChangedEventArgs> TextChanged;
     }
 }

@@ -8,7 +8,7 @@ namespace SyncEd.Editor
     {
         public override void Load()
         {
-            Bind<IDocument>().To<SimpleDocument>().InSingletonScope();
+            Bind<IDocument>().To<StringBuilderDocument>().InSingletonScope();
         }
     }
 }

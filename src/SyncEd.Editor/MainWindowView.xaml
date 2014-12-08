@@ -24,7 +24,7 @@
         </Border>
 
         <Border Margin="5" Padding="5">
-            <TextBox Text="{Binding DocumentText, Mode=TwoWay}" IsEnabled="{Binding IsConnected, Mode=OneWay}"
+            <TextBox Text="{Binding DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsConnected, Mode=OneWay}"
                      TextChanged="TextChanged"
                      AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" />
         </Border>

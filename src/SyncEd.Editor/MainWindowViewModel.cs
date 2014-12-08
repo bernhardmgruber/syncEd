@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Input;
 using SyncEd.Document;
@@ -35,7 +36,7 @@ namespace SyncEd.Editor
             get { return documentText; }
             set { SetProperty(ref documentText, value); }
         }
-        private string documentText;
+        private string documentText = String.Empty;
 
         public bool IsConnected
         {
@@ -66,18 +67,31 @@ namespace SyncEd.Editor
 
             IsConnected = await document.Connect(DocumentName);
             CanConnect = !IsConnected;
+
+            if (IsConnected)
+                document.TextChanged += document_DocumentTextChanged;
         }
 
         public void ChangeText(ICollection<TextChange> changes, UndoAction undoAction)
         {
-            // TODO
+            foreach (var textChange in changes) {
+                string phrase = DocumentText.Substring(textChange.Offset, textChange.AddedLength);
+                document.ChangeText(textChange.Offset, textChange.RemovedLength, phrase);
+            }
         }
 
         public void Close()
         {
             document.Close();
+            if (IsConnected)
+                document.TextChanged -= document_DocumentTextChanged;
             CanConnect = true;
             IsConnected = false;
+        }
+
+        private void document_DocumentTextChanged(object sender, DocumentTextChangedEventArgs e)
+        {
+            DocumentText = e.Text;
         }
     }
 }
