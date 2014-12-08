@@ -7,12 +7,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SyncEd.Network
+namespace SyncEd.Network.Tcp
 {
-	public delegate void NewLinkHandler(Peer p);
+	public delegate void NewLinkHandler(TcpPeer p);
 
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
-	public class LinkEstablisher
+	public class TcpLinkEstablisher
 	{
 		// UDP port for sending broadcasts
 		const int broadcastPort = 1337;
@@ -27,7 +27,7 @@ namespace SyncEd.Network
 		/// <summary>
 		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
 		/// </summary>
-		public Peer FindPeer(string documentName)
+		public TcpPeer FindPeer(string documentName)
 		{
 			// open listening port for incoming connection
 			var haveListener = new TcpListener(IPAddress.Any, listenPort);
@@ -44,9 +44,9 @@ namespace SyncEd.Network
 			}
 
 			// wait for an answer
-			Peer peer = null;
+			TcpPeer peer = null;
 			if (peerTask.Wait(linkEstablishTimeoutMs))
-				peer = new Peer(peerTask.Result);
+				peer = new TcpPeer(peerTask.Result);
 
 			// stop listening
 			haveListener.Stop();
@@ -84,7 +84,7 @@ namespace SyncEd.Network
 								client.Connect(clientEP.Address, listenPort);
 
 								if (NewLinkEstablished != null) // Warning: not thread safe
-									NewLinkEstablished(new Peer(client));
+									NewLinkEstablished(new TcpPeer(client));
 							}
 						}
 						catch (Exception e)

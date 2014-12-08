@@ -8,30 +8,28 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Threading;
 
-namespace SyncEd.Network
+namespace SyncEd.Network.Tcp
 {
-	public delegate void PacketArrivedHandler(Packet packet, Peer peer);
-
-	public class LinkControl
+	public class TcpLinkControl : INetwork
 	{
 		public event PacketArrivedHandler PacketArrived;
 
-		public LinkEstablisher Establisher { get; set; }
+		public TcpLinkEstablisher Establisher { get; set; }
 
-		private List<Peer> peers = new List<Peer>();
-		public IList<Peer> Peers { get { return peers; } }
+		private List<TcpPeer> peers = new List<TcpPeer>();
+		public IList<TcpPeer> Peers { get { return peers; } }
 
-		private BlockingCollection<Tuple<Packet, Peer>> packets = new BlockingCollection<Tuple<Packet, Peer>>();
+		private BlockingCollection<Tuple<Packet, TcpPeer>> packets = new BlockingCollection<Tuple<Packet, TcpPeer>>();
 
 		private CancellationTokenSource cancelSrc;
 
-		public LinkControl(LinkEstablisher establisher)
+		public TcpLinkControl(TcpLinkEstablisher establisher)
 		{
 			Establisher = establisher;
 			Establisher.NewLinkEstablished += NewLinkEstablished;
 		}
 
-		void NewLinkEstablished(Peer p)
+		void NewLinkEstablished(TcpPeer p)
 		{
 			peers.Add(p);
 
@@ -58,16 +56,16 @@ namespace SyncEd.Network
 			});
 		}
 
-		void SendPacket(Packet p)
+		public void SendPacket(Packet p)
 		{
-			packets.Add(Tuple.Create(p, null as Peer));
+			packets.Add(Tuple.Create(p, null as TcpPeer));
 		}
 
 		/// <summary>
 		/// Starts the link control system which is responsible for managing links and packets
 		/// </summary>
 		/// <returns>Returns true if a peer could be found for the given document name</returns>
-		bool Start(string documentName)
+		public bool Start(string documentName)
 		{
 			cancelSrc = new CancellationTokenSource();
 			var token = cancelSrc.Token;
@@ -83,7 +81,7 @@ namespace SyncEd.Network
 				{
 					var packetAndPeer = packets.Take(token);
 
-					foreach (Peer p in peers)
+					foreach (TcpPeer p in peers)
 					{
 						if(p != null && p != packetAndPeer.Item2)
 						lock (p)
@@ -94,14 +92,14 @@ namespace SyncEd.Network
 					}
 
 					if (PacketArrived != null)
-						PacketArrived(packetAndPeer.Item1, packetAndPeer.Item2);
+						PacketArrived(packetAndPeer.Item1, packetAndPeer.Item2.Peer);
 				}
 			});
 
 			return peer != null;
 		}
 
-		void Stop()
+        public void Stop()
 		{
 			cancelSrc.Cancel();
 

@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("SyncEd.Network.Packets")]
+[assembly: AssemblyTitle("syncEd.network")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("SyncEd.Network.Packets")]
+[assembly: AssemblyProduct("syncEd.network")]
 [assembly: AssemblyCopyright("Copyright ©  2014")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("43a1d5a1-1ef4-4a87-a4f8-9c159d0fedca")]
+[assembly: Guid("ef5c7f08-176e-4ed2-babb-b8e8a2dbd6cf")]
 
 // Version information for an assembly consists of the following four values:
 //

@@ -1,3 +1,7 @@
 /src/*.suo
 /src/syncEd.network/obj
 /src/syncEd.network/bin
+/src/SyncEd.Network.Packets/obj
+/src/SyncEd.Network.Packets/bin
+/src/SyncEd.Network.Tcp/bin
+/src/SyncEd.Network.Tcp/obj
