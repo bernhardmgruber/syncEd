@@ -1,6 +1,9 @@
-﻿namespace SyncEd.Network.Packets
+﻿using System.Runtime.Serialization;
+
+namespace SyncEd.Network.Packets
 {
-    public class QueryDocumentPacket : Packet
+    [DataContract]
+    public class QueryDocumentPacket
     {
 
     }

@@ -10,14 +10,17 @@ namespace SyncEd.Network.Tcp
 {
     public class TcpLinkControl : INetwork
     {
-        public event PacketArrivedHandler PacketArrived;
+        public event DocumentPacketHandler      DocumentPacketArrived;
+        public event QueryDocumentPacketHandler QueryDocumentPacketArrived;
+        public event AddTextPacketHandler       AddTextPacketArrived;
+        public event DeleteTextPacketHandler    DeleteTextPacketArrived;
 
         public TcpLinkEstablisher Establisher { get; set; }
 
         private List<TcpPeer> peers = new List<TcpPeer>();
         public IList<TcpPeer> Peers { get { return peers; } }
 
-        private BlockingCollection<Tuple<Packet, TcpPeer>> packets = new BlockingCollection<Tuple<Packet, TcpPeer>>();
+        private BlockingCollection<Tuple<object, TcpPeer>> packets = new BlockingCollection<Tuple<object, TcpPeer>>();
 
         private CancellationTokenSource cancelSrc;
 
@@ -38,7 +41,7 @@ namespace SyncEd.Network.Tcp
                             break;
 
                         var f = new BinaryFormatter();
-                        var packet = (Packet)f.Deserialize(p.Tcp.GetStream());
+                        var packet = f.Deserialize(p.Tcp.GetStream());
                         packets.Add(Tuple.Create(packet, p));
                     }
 
@@ -51,9 +54,29 @@ namespace SyncEd.Network.Tcp
             });
         }
 
-        public void SendPacket(Packet p)
+        public void SendPacket(DocumentPacket packet)
         {
-            packets.Add(Tuple.Create(p, null as TcpPeer));
+            SendObject(packet);
+        }
+
+        public void SendPacket(QueryDocumentPacket packet)
+        {
+            SendObject(packet);
+        }
+
+        public void SendPacket(AddTextPacket packet)
+        {
+            SendObject(packet);
+        }
+
+        public void SendPacket(DeleteTextPacket packet)
+        {
+            SendObject(packet);
+        }
+
+        void SendObject(object o)
+        {
+            packets.Add(Tuple.Create(o, null as TcpPeer));
         }
 
         /// <summary>
@@ -82,12 +105,26 @@ namespace SyncEd.Network.Tcp
                             }
                     }
 
-                    if (PacketArrived != null)
-                        PacketArrived(packetAndPeer.Item1, packetAndPeer.Item2.Peer);
+                    DispatchObject(packetAndPeer.Item1, packetAndPeer.Item2.Peer);
+                    
                 }
             });
 
             return peer != null;
+        }
+
+        void DispatchObject(object o, Peer peer)
+        {
+            if (o is AddTextPacket && AddTextPacketArrived != null)
+                AddTextPacketArrived(o as AddTextPacket, peer);
+            else if (o is DeleteTextPacket && DeleteTextPacketArrived != null)
+                DeleteTextPacketArrived(o as DeleteTextPacket, peer);
+            else if (o is DocumentPacket && DocumentPacketArrived != null)
+                DocumentPacketArrived(o as DocumentPacket, peer);
+            else if (o is QueryDocumentPacket && QueryDocumentPacketArrived != null)
+                QueryDocumentPacketArrived(o as QueryDocumentPacket, peer);
+            else
+                Console.WriteLine("Unrecognized packet of type: " + o.GetType().AssemblyQualifiedName);
         }
 
         public void Stop()

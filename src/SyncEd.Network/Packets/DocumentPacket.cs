@@ -1,6 +1,9 @@
-﻿namespace SyncEd.Network.Packets
+﻿using System.Runtime.Serialization;
+
+namespace SyncEd.Network.Packets
 {
-    public class DocumentPacket : Packet
+    [DataContract]
+    public class DocumentPacket
     {
         public string Document { get; set; }
     }

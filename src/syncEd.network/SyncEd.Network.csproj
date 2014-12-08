@@ -33,11 +33,13 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Packets\AddTextPacket.cs" />
+    <Compile Include="Packets\DeleteTextPacket.cs" />
     <Compile Include="Packets\DocumentPacket.cs" />
     <Compile Include="INetwork.cs" />
-    <Compile Include="Packet.cs" />
     <Compile Include="Peer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Packets\QueryDocumentPacket.cs" />

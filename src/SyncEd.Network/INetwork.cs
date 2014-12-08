@@ -2,11 +2,17 @@
 
 namespace SyncEd.Network
 {
-    public delegate void PacketArrivedHandler(Packet packet, Peer peer);
+    public delegate void DocumentPacketHandler(DocumentPacket packet, Peer peer);
+    public delegate void QueryDocumentPacketHandler(QueryDocumentPacket packet, Peer peer);
+    public delegate void AddTextPacketHandler(AddTextPacket packet, Peer peer);
+    public delegate void DeleteTextPacketHandler(DeleteTextPacket packet, Peer peer);
 
     public interface INetwork
     {
-        event PacketArrivedHandler PacketArrived;
+        event DocumentPacketHandler      DocumentPacketArrived;
+        event QueryDocumentPacketHandler QueryDocumentPacketArrived;
+        event AddTextPacketHandler       AddTextPacketArrived;
+        event DeleteTextPacketHandler    DeleteTextPacketArrived;
 
         /// <summary>
         /// Starts the network subsystem which is responsible for managing links and packets
@@ -14,6 +20,9 @@ namespace SyncEd.Network
         /// <returns>Returns true if a peer could be found for the given document name</returns>
         bool Start(string documentName);
         void Stop();
-        void SendPacket(Packet packet);
+        void SendPacket(DocumentPacket packet);
+        void SendPacket(QueryDocumentPacket packet);
+        void SendPacket(AddTextPacket packet);
+        void SendPacket(DeleteTextPacket packet);
     }
 }
