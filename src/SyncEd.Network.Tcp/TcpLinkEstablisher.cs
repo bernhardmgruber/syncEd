@@ -13,12 +13,12 @@ namespace SyncEd.Network.Tcp
     public class TcpLinkEstablisher
     {
         // UDP port for sending broadcasts
-        const int broadcastPort = 1337;
+        const int BroadcastPort = 1337;
 
         // TCP port for listening after broadcasts
-        const int listenPort = 1338;
+        const int ListenPort = 1338;
 
-        const int linkEstablishTimeoutMs = 1000;
+        const int LinkEstablishTimeoutMs = 1000;
 
         public event NewLinkHandler NewLinkEstablished;
 
@@ -28,13 +28,15 @@ namespace SyncEd.Network.Tcp
         public TcpPeer FindPeer(string documentName)
         {
             // open listening port for incoming connection
-            var haveListener = new TcpListener(IPAddress.Any, listenPort);
+            var haveListener = new TcpListener(IPAddress.Any, ListenPort);
             haveListener.Start(1); // only listen for 1 connection
             var peerTask = haveListener.AcceptTcpClientAsync();
 
             // send a broadcast with the document name into the network
             using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
-                IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, broadcastPort);
+                s.EnableBroadcast = true;
+                IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, BroadcastPort);
+
 
                 byte[] bytes = Encoding.ASCII.GetBytes(documentName);
                 s.SendTo(bytes, ep);
@@ -42,7 +44,7 @@ namespace SyncEd.Network.Tcp
 
             // wait for an answer
             TcpPeer peer = null;
-            if (peerTask.Wait(linkEstablishTimeoutMs))
+            if (peerTask.Wait(LinkEstablishTimeoutMs))
                 peer = new TcpPeer(peerTask.Result);
 
             // stop listening
@@ -59,13 +61,13 @@ namespace SyncEd.Network.Tcp
         public void ListenForPeers(string documentName, CancellationToken token)
         {
             Task.Run(() => {
-                using (var udpClient = new UdpClient(broadcastPort)) {
+                using (var udpClient = new UdpClient(BroadcastPort)) {
                     udpClient.Client.ReceiveTimeout = 1000;
 
                     while (!token.IsCancellationRequested) {
                         try {
                             Console.WriteLine("Waiting for broadcast");
-                            var clientEP = new IPEndPoint(IPAddress.Any, broadcastPort);
+                            var clientEP = new IPEndPoint(IPAddress.Any, BroadcastPort);
                             byte[] bytes = udpClient.Receive(ref clientEP);
                             string peerDocumentName = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
                             Console.WriteLine("Received broadcast from {0}:\n {1}\n", clientEP.ToString(), peerDocumentName);
@@ -73,7 +75,7 @@ namespace SyncEd.Network.Tcp
                             if (peerDocumentName == documentName) {
                                 // establish connection to peer
                                 var client = new TcpClient();
-                                client.Connect(clientEP.Address, listenPort);
+                                client.Connect(clientEP.Address, ListenPort);
 
                                 if (NewLinkEstablished != null) // Warning: not thread safe
                                     NewLinkEstablished(new TcpPeer(client));
