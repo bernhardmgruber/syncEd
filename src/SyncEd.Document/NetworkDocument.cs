@@ -15,6 +15,7 @@ namespace SyncEd.Document
         public NetworkDocument(INetwork network)
         {
             this.network = network;
+            this.documentText = new StringBuilder();
             network.AddTextPacketArrived += network_AddTextPacketArrived;
             network.DeleteTextPacketArrived += network_DeleteTextPacketArrived;
             network.DocumentPacketArrived += network_DocumentPacketArrived;

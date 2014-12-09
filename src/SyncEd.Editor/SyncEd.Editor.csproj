@@ -112,6 +112,14 @@
       <Project>{612eb1bd-93fe-4811-aa4d-1550a9bd944d}</Project>
       <Name>SyncEd.Document</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SyncEd.Network.Tcp\SyncEd.Network.Tcp.csproj">
+      <Project>{f4ff7049-fc88-4cfd-bdc5-d84319b2eba5}</Project>
+      <Name>SyncEd.Network.Tcp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">
+      <Project>{dd7c6445-8c14-4143-9281-3680080d02af}</Project>
+      <Name>SyncEd.Network</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

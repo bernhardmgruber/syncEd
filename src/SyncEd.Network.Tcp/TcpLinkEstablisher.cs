@@ -33,7 +33,9 @@ namespace SyncEd.Network.Tcp
             var peerTask = haveListener.AcceptTcpClientAsync();
 
             // send a broadcast with the document name into the network
+            Console.WriteLine("Broadcasting for " + documentName);
             using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+                s.EnableBroadcast = true;
                 IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, broadcastPort);
 
                 byte[] bytes = Encoding.ASCII.GetBytes(documentName);
@@ -41,9 +43,11 @@ namespace SyncEd.Network.Tcp
             }
 
             // wait for an answer
+            Console.WriteLine("Waiting for answer");
             TcpPeer peer = null;
             if (peerTask.Wait(linkEstablishTimeoutMs))
                 peer = new TcpPeer(peerTask.Result);
+            Console.WriteLine("Found: " + (peer != null));
 
             // stop listening
             haveListener.Stop();
@@ -60,6 +64,7 @@ namespace SyncEd.Network.Tcp
         {
             Task.Run(() => {
                 using (var udpClient = new UdpClient(broadcastPort)) {
+                    udpClient.EnableBroadcast = true;
                     udpClient.Client.ReceiveTimeout = 1000;
 
                     while (!token.IsCancellationRequested) {
