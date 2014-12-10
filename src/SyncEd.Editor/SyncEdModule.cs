@@ -10,6 +10,7 @@ namespace SyncEd.Editor
     {
         public override void Load()
         {
+            //Bind<IDocument>().To<StringBuilderDocument>().InSingletonScope();
             Bind<IDocument>().To<NetworkDocument>().InSingletonScope();
             Bind<INetwork>().To<TcpLinkControl>().InSingletonScope();
         }

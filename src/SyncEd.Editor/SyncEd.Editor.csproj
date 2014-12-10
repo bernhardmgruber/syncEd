@@ -116,11 +116,11 @@
       <Name>SyncEd.Document</Name>
     </ProjectReference>
     <ProjectReference Include="..\SyncEd.Network.Tcp\SyncEd.Network.Tcp.csproj">
-      <Project>{f4ff7049-fc88-4cfd-bdc5-d84319b2eba5}</Project>
+      <Project>{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}</Project>
       <Name>SyncEd.Network.Tcp</Name>
     </ProjectReference>
     <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">
-      <Project>{dd7c6445-8c14-4143-9281-3680080d02af}</Project>
+      <Project>{DD7C6445-8C14-4143-9281-3680080D02AF}</Project>
       <Name>SyncEd.Network</Name>
     </ProjectReference>
   </ItemGroup>
