@@ -95,20 +95,28 @@ namespace SyncEd.Network.Tcp
 
             Task.Run(() => {
                 while (!token.IsCancellationRequested) {
-                    var packetAndPeer = packets.Take(token);
+                    try
+                    {
+                        var packetAndPeer = packets.Take(token);
 
-                    Console.WriteLine("TcpLinkControl: Outgoing: " + packetAndPeer.Item1.ToString());
+                        Console.WriteLine("TcpLinkControl: Outgoing: " + packetAndPeer.Item1.ToString());
 
-                    foreach (TcpPeer p in peers) {
-                        if (p != null && p != packetAndPeer.Item2)
-                            lock (p) {
-                                var f = new BinaryFormatter();
-                                f.Serialize(p.Tcp.GetStream(), packetAndPeer.Item1);
-                            }
+                        foreach (TcpPeer p in peers)
+                        {
+                            if (p != null && p != packetAndPeer.Item2)
+                                lock (p)
+                                {
+                                    var f = new BinaryFormatter();
+                                    f.Serialize(p.Tcp.GetStream(), packetAndPeer.Item1);
+                                }
+                        }
+
+                        DispatchObject(packetAndPeer.Item1, packetAndPeer.Item2.Peer);
                     }
-
-                    DispatchObject(packetAndPeer.Item1, packetAndPeer.Item2.Peer);
-                    
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Send task: Failed to send package: " + e);
+                    }
                 }
             });
 

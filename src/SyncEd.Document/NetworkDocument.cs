@@ -58,7 +58,10 @@ namespace SyncEd.Document
             documentText.Clear();
             FireTextChanged();
 
-            return result;
+            IsConnected = true;
+
+            //return result;
+            return Task.Run(() => true); // we are always connected
         }
 
         public Task Close()
