@@ -18,9 +18,8 @@ namespace SyncEd.Network.Tcp
 
         public Peer Peer { get; private set; }
 
-        public TcpClient TcpIn { get; set; }
+        private TcpClient Tcp { get; set; }
 
-        public TcpClient TcpOut { get; set; }
 
         private Thread sendThread;
         private Thread recvThread;
@@ -29,12 +28,10 @@ namespace SyncEd.Network.Tcp
 
         private CancellationTokenSource cancelSource;
 
-        public TcpPeer(TcpClient tcpIn, TcpClient tcpOut)
+        public TcpPeer(TcpClient tcp)
         {
-            Debug.Assert(tcpIn.Client.RemoteEndPoint == tcpOut.Client.RemoteEndPoint);
-            TcpIn = tcpIn;
-            TcpOut = tcpOut;
-            Peer = new Peer() { Address = (tcpIn.Client.RemoteEndPoint as IPEndPoint).Address };
+            Tcp = tcp;
+            Peer = new Peer() { Address = (tcp.Client.RemoteEndPoint as IPEndPoint).Address };
 
             cancelSource = new CancellationTokenSource();
             var token = cancelSource.Token;
@@ -46,7 +43,7 @@ namespace SyncEd.Network.Tcp
                     {
                         var o = sendColl.Take(token);
                         var f = new BinaryFormatter();
-                        f.Serialize(TcpOut.GetStream(), o);
+                        f.Serialize(Tcp.GetStream(), o);
                     }
                     catch (Exception e)
                     {
@@ -63,7 +60,7 @@ namespace SyncEd.Network.Tcp
                     try
                     {
                         var f = new BinaryFormatter();
-                        var o = f.Deserialize(TcpIn.GetStream());
+                        var o = f.Deserialize(Tcp.GetStream());
                         if (ObjectReceived != null)
                             ObjectReceived(o, Peer);
                     }
@@ -84,17 +81,15 @@ namespace SyncEd.Network.Tcp
         public void Close()
         {
             cancelSource.Cancel();
-            TcpIn.GetStream().Close();
-            TcpOut.GetStream().Close();
-            TcpIn.Close();
-            TcpOut.Close();
+            Tcp.GetStream().Close();
+            Tcp.Close();
             sendThread.Join();
             recvThread.Join();
         }
 
         public override string ToString()
         {
-            return "TcpPeer { " + (TcpIn.Client.RemoteEndPoint as IPEndPoint).Address + "}";
+            return "TcpPeer { " + (Tcp.Client.RemoteEndPoint as IPEndPoint).Address + "}";
         }
     }
 }

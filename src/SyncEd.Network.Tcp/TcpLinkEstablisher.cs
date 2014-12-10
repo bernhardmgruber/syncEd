@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace SyncEd.Network.Tcp
 {
@@ -41,7 +42,8 @@ namespace SyncEd.Network.Tcp
 
             // send a broadcast with the document name into the network
             Console.WriteLine("Broadcasting for " + documentName);
-            using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+            using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            {
                 s.EnableBroadcast = true;
                 IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, broadcastPort);
 
@@ -50,28 +52,29 @@ namespace SyncEd.Network.Tcp
             }
 
             // wait for an answer
-            Console.WriteLine("Waiting for answer");
+            Console.WriteLine("Waiting for TCP connect");
             TcpPeer peer = null;
             if (peerTask.Wait(linkEstablishTimeoutMs))
             {
-                var tcpIn = peerTask.Result;
-                var ep = (IPEndPoint)tcpIn.Client.RemoteEndPoint;
-                Console.WriteLine("Answer from " + ep.Address);
+                var tcp = peerTask.Result;
+                var ep = (IPEndPoint)tcp.Client.RemoteEndPoint;
+                Console.WriteLine("TCP connect from " + ep.Address);
 
-                Console.WriteLine("Establishing duplex link");
-                var tcpOut = new TcpClient();
-                try
-                {
-                    tcpOut.Connect(ep.Address, listenPort);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Failed to connet: " + e);
-                    tcpOut.Close();
-                }
+                //Console.WriteLine("Establishing duplex link");
+                //var tcpOut = new TcpClient();
+                //try
+                //{
+                //    tcpOut.Connect(ep.Address, listenPort);
+                //}
+                //catch (Exception e)
+                //{
+                //    Console.WriteLine("Failed to connet: " + e);
+                //    tcpOut.Close();
+                //}
                 Console.WriteLine("Connection established");
 
-                peer = new TcpPeer(tcpIn, tcpOut);
+                //peer = new TcpPeer(tcpIn, tcpOut);
+                peer = new TcpPeer(tcp);
             }
             else
                 Console.WriteLine("No answer. I'm first owner");
@@ -80,6 +83,11 @@ namespace SyncEd.Network.Tcp
             listener.Stop();
 
             return peer;
+        }
+
+        bool IsLocalAddress(IPAddress address)
+        {
+            return Dns.GetHostAddresses(Dns.GetHostName()).Any(a => a.Equals(address));
         }
 
         /// <summary>
@@ -105,38 +113,41 @@ namespace SyncEd.Network.Tcp
                                 string peerDocumentName = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
                                 Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, peerDocumentName);
 
-                                if (peerDocumentName == documentName) {
+                                if (IsLocalAddress(ep.Address))
+                                    Console.WriteLine("Self broadcast detected");
+                                else if (peerDocumentName == documentName) {
                                     // create listener for duplex link
-                                    var listener = new TcpListener(IPAddress.Any, listenPort);
-                                    listener.Start(1);
-                                    var peerTask = listener.AcceptTcpClientAsync();
+                                    //var listener = new TcpListener(IPAddress.Any, listenPort);
+                                    //listener.Start(1);
+                                    //var peerTask = listener.AcceptTcpClientAsync();
 
                                     // establish connection to peer
-                                    var tcpOut = new TcpClient();
+                                    var tcp = new TcpClient();
                                     Console.WriteLine("TCP connect to " + ep.Address);
                                     try
                                     {
-                                        tcpOut.Connect(ep.Address, listenPort);
+                                        tcp.Connect(ep.Address, listenPort);
                                     }
                                     catch (Exception e)
                                     {
                                         Console.WriteLine("Failed to connet: " + e);
-                                        tcpOut.Close();
+                                        tcp.Close();
                                     }
-                                    Console.WriteLine("Waiting for duplex link");
+                                    //Console.WriteLine("Waiting for duplex link");
 
-                                    if (peerTask.Wait(linkEstablishTimeoutMs))
-                                    {
-                                        var tcpIn = peerTask.Result;
+                                    //if (peerTask.Wait(linkEstablishTimeoutMs))
+                                    //{
+                                    //    var tcpIn = peerTask.Result;
                                         Console.WriteLine("Connection established");
 
                                         if (NewLinkEstablished != null) // Warning: not thread safe
-                                            NewLinkEstablished(new TcpPeer(tcpIn, tcpOut));
-                                    }
-                                    else
-                                        tcpOut.Close();
+                                            //NewLinkEstablished(new TcpPeer(tcpIn, tcpOut));
+                                            NewLinkEstablished(new TcpPeer(tcp));
+                                    //}
+                                    //else
+                                    //    tcpOut.Close();
 
-                                    listener.Stop();
+                                    //listener.Stop();
                                 }
                             }
                         } catch (Exception e) {
