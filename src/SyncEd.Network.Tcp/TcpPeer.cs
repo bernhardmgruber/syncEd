@@ -11,15 +11,16 @@ using System.Threading.Tasks;
 namespace SyncEd.Network.Tcp
 {
     public delegate void ObjectReceivedHandler(object o, Peer p);
+    public delegate void FailedHandler(TcpPeer sender);
 
     public class TcpPeer
     {
         public event ObjectReceivedHandler ObjectReceived;
+        public event FailedHandler Failed;
 
         public Peer Peer { get; private set; }
 
         private TcpClient Tcp { get; set; }
-
 
         private Thread sendThread;
         private Thread recvThread;
@@ -48,6 +49,7 @@ namespace SyncEd.Network.Tcp
                     catch (Exception e)
                     {
                         Console.WriteLine("Send in " + ToString() + " failed: " + e);
+                        FireFailed();
                     }
                 }
             }));
@@ -55,22 +57,35 @@ namespace SyncEd.Network.Tcp
 
             recvThread = new Thread(() =>
             {
+                var f = new BinaryFormatter();
                 while (!token.IsCancellationRequested)
                 {
                     try
                     {
-                        var f = new BinaryFormatter();
-                        var o = f.Deserialize(Tcp.GetStream());
-                        if (ObjectReceived != null)
-                            ObjectReceived(o, Peer);
+                        FireObjectReceived(f.Deserialize(Tcp.GetStream()));
                     }
                     catch (Exception e)
                     {
                         Console.WriteLine("Receive in " + ToString() + " failed: " + e);
+                        FireFailed();
                     }
                 }
             });
             recvThread.Start();
+        }
+
+        private void FireObjectReceived(object o)
+        {
+            var handler = ObjectReceived;
+            if (handler != null)
+                handler(o, Peer);
+        }
+
+        private void FireFailed()
+        {
+            var handler = Failed;
+            if (handler != null)
+                handler(this);
         }
 
         public void SendAsync(object o)
