@@ -76,7 +76,7 @@ namespace SyncEd.Editor
         {
             foreach (var textChange in changes) {
                 string phrase = DocumentText.Substring(textChange.Offset, textChange.AddedLength);
-                document.ChangeText(textChange.Offset, textChange.RemovedLength, phrase);
+                document.ChangeText(textChange.Offset, textChange.RemovedLength, phrase, true);
             }
         }
 
