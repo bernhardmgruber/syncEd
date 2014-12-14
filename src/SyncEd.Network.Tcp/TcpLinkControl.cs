@@ -56,7 +56,7 @@ namespace SyncEd.Network.Tcp
             lock (peers)
                 peers.Remove(sender);
             sender.Close();
-            Panic();
+            Panic(sender);
         }
 
         public void SendPacket(DocumentPacket packet)
@@ -110,9 +110,9 @@ namespace SyncEd.Network.Tcp
                 Console.WriteLine("Unrecognized packet of type: " + o.GetType().AssemblyQualifiedName);
         }
 
-        void Panic()
+        void Panic(TcpPeer deadPeer)
         {
-            Console.WriteLine("PANIC");
+            Console.WriteLine("PANIC - " + deadPeer.Peer.Address + " is dead");
 
         }
     }

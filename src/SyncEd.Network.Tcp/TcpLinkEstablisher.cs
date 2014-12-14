@@ -19,7 +19,8 @@ namespace SyncEd.Network.Tcp
 
         public event NewLinkHandler NewLinkEstablished;
 
-        private Thread listenThread;
+        private Thread udpListenThread;
+
         private CancellationTokenSource cancelSource;
 
         private string documentName;
@@ -105,7 +106,7 @@ namespace SyncEd.Network.Tcp
             cancelSource = new CancellationTokenSource();
             var token = cancelSource.Token;
 
-            listenThread = new Thread(() => {
+            udpListenThread = new Thread(() => {
                 using (var udpClient = new UdpClient(broadcastPort)) {
                     udpClient.EnableBroadcast = true;
                     token.Register(() => udpClient.Close()); // causes Receive() to return
@@ -148,13 +149,13 @@ namespace SyncEd.Network.Tcp
                 }
             });
 
-            listenThread.Start();
+            udpListenThread.Start();
         }
 
         public void Close()
         {
             cancelSource.Cancel();
-            listenThread.Join();
+            udpListenThread.Join();
         }
     }
 }
