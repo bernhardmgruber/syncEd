@@ -35,7 +35,7 @@ namespace SyncEd.Document
             return Task.Delay(wasConnected ? 250 : 0);
         }
 
-        public void ChangeText(int offset, int length, string text)
+        public void ChangeText(int offset, int length, string text, bool _)
         {
             Trace.WriteLine(string.Format("ChangeText [{0} {1}]: {2}", offset, length, text));
             documentText.Remove(offset, length);
@@ -50,7 +50,7 @@ namespace SyncEd.Document
         {
             string text = documentText.ToString();
             if (TextChanged != null)
-                TextChanged(this, new DocumentTextChangedEventArgs(text));
+                TextChanged(this, new DocumentTextChangedEventArgs(text, false));
         }
     }
 }

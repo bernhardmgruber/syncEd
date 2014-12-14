@@ -80,21 +80,23 @@ namespace SyncEd.Document
             FireTextChanged();
         }
 
-        public void ChangeText(int offset, int length, string text)
+        public void ChangeText(int offset, int length, string text, bool guiSource)
         {
             if (length > 0)
                 network.SendPacket(new DeleteTextPacket() { Offset = offset, Length = length });
             if (text.Length > 0)
                 network.SendPacket(new AddTextPacket() { Offset = offset, Text = text });
 
-            FireTextChanged();
+            FireTextChanged(guiSource);
         }
 
-        protected void FireTextChanged()
+        protected void FireTextChanged(bool guiSource = false)
         {
-            string text = documentText.ToString();
-            if (TextChanged != null)
-                TextChanged(this, new DocumentTextChangedEventArgs(text));
+            if (!guiSource) {
+                string text = documentText.ToString();
+                if (TextChanged != null)
+                    TextChanged(this, new DocumentTextChangedEventArgs(text, guiSource));
+            }
         }
 
         public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
