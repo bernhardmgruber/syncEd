@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SyncEd.Network;
 using SyncEd.Network.Packets;
@@ -13,16 +14,20 @@ namespace SyncEd.Document
 
         private readonly StringBuilder documentText;
 
+        private readonly IDictionary<Peer, int?> carets;
+
         public NetworkDocument(INetwork network)
         {
             this.network = network;
 
             documentText = new StringBuilder();
+            carets = new Dictionary<Peer, int?>();
 
             network.AddTextPacketArrived += network_AddTextPacketArrived;
             network.DeleteTextPacketArrived += network_DeleteTextPacketArrived;
             network.DocumentPacketArrived += network_DocumentPacketArrived;
             network.QueryDocumentPacketArrived += network_QueryDocumentPacketArrived;
+            network.UpdateCaretPacketArrived += network_UpdateCaretPackageArrived;
         }
 
         public bool IsConnected { get; private set; }
@@ -80,6 +85,11 @@ namespace SyncEd.Document
             FireTextChanged();
         }
 
+        private void network_UpdateCaretPackageArrived(UpdateCaretPacket packet, Peer peer)
+        {
+            FireCaretPositionChanged(peer, packet.Position);
+        }
+
         public void ChangeText(int offset, int length, string text, bool guiSource)
         {
             if (length > 0)
@@ -98,7 +108,16 @@ namespace SyncEd.Document
                     TextChanged(this, new DocumentTextChangedEventArgs(text, guiSource));
             }
         }
-
         public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
+
+        protected void FireCaretPositionChanged(Peer peer, int? position)
+        {
+            if (CaretChanged != null) {
+                CaretChanged(this, new CaretChangedEventArgs(peer, position));
+            }
+        }
+
+        public event EventHandler<CaretChangedEventArgs> CaretChanged;
+
     }
 }

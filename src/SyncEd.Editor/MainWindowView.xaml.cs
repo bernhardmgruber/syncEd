@@ -20,7 +20,8 @@ namespace SyncEd.Editor
 
         private void TextChanged(object sender, TextChangedEventArgs e)
         {
-            DataContext.ChangeText(e.Changes, e.UndoAction);
+            if (DataContext != null)
+                DataContext.ChangeText(e.Changes, e.UndoAction);
         }
 
         private void OnClosed(object sender, EventArgs e)

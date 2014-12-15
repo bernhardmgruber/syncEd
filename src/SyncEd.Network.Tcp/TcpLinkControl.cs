@@ -10,10 +10,11 @@ namespace SyncEd.Network.Tcp
 {
     public class TcpLinkControl : INetwork
     {
-        public event DocumentPacketHandler      DocumentPacketArrived;
+        public event DocumentPacketHandler DocumentPacketArrived;
         public event QueryDocumentPacketHandler QueryDocumentPacketArrived;
-        public event AddTextPacketHandler       AddTextPacketArrived;
-        public event DeleteTextPacketHandler    DeleteTextPacketArrived;
+        public event AddTextPacketHandler AddTextPacketArrived;
+        public event DeleteTextPacketHandler DeleteTextPacketArrived;
+        public event UpdateCaretPacketHandler UpdateCaretPacketArrived;
 
         public TcpLinkEstablisher Establisher { get; set; }
 
@@ -44,6 +45,11 @@ namespace SyncEd.Network.Tcp
         }
 
         public void SendPacket(DeleteTextPacket packet)
+        {
+            SendObject(packet);
+        }
+
+        public void SendPacket(UpdateCaretPacket packet)
         {
             SendObject(packet);
         }
@@ -87,6 +93,8 @@ namespace SyncEd.Network.Tcp
                 DocumentPacketArrived(o as DocumentPacket, peer);
             else if (o is QueryDocumentPacket && QueryDocumentPacketArrived != null)
                 QueryDocumentPacketArrived(o as QueryDocumentPacket, peer);
+            else if (o is UpdateCaretPacket && UpdateCaretPacketArrived != null)
+                UpdateCaretPacketArrived(o as UpdateCaretPacket, peer);
             else
                 Console.WriteLine("Unrecognized packet of type: " + o.GetType().AssemblyQualifiedName);
         }

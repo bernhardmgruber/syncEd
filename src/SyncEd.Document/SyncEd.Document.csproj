@@ -34,6 +34,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CaretChangedEventArgs.cs" />
     <Compile Include="DocumentTextChangedEventArgs.cs" />
     <Compile Include="IDocument.cs" />
     <Compile Include="NetworkDocument.cs" />

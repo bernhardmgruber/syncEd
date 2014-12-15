@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using SyncEd.Document;
 
@@ -16,7 +17,12 @@ namespace SyncEd.Editor
             this.document = document;
         }
 
-
+        public FlowDocument Document
+        {
+            get { return flowDocument; }
+            set { SetProperty(ref flowDocument, value); }
+        }
+        private FlowDocument flowDocument;
         public string DocumentName
         {
             get { return documentName; }
@@ -44,6 +50,11 @@ namespace SyncEd.Editor
             set { SetProperty(ref isConnected, value); }
         }
         private bool isConnected = false;
+
+        /*public IEnumerable<int> Carets
+        {
+            
+        }*/
 
 
         public bool CanConnect
