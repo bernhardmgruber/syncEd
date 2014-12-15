@@ -19,7 +19,8 @@ namespace SyncEd.Network.Tcp
 
         public event NewLinkHandler NewLinkEstablished;
 
-        private Thread listenThread;
+        private Thread udpListenThread;
+
         private CancellationTokenSource cancelSource;
 
         private string documentName;
@@ -30,64 +31,69 @@ namespace SyncEd.Network.Tcp
             StartListeningForPeers();
         }
 
+        private byte[] toBytes(string str)
+        {
+            return Encoding.Unicode.GetBytes(str);
+        }
+
+        private string toString(byte[] bytes)
+        {
+            return Encoding.Unicode.GetString(bytes);
+        }
+
         /// <summary>
         /// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
         /// </summary>
         public TcpPeer FindPeer()
         {
-            // open listening port for incoming connection
-            var listener = new TcpListener(IPAddress.Any, listenPort);
-            listener.Start(1); // only listen for 1 connection
-            var peerTask = listener.AcceptTcpClientAsync();
-
-            // send a broadcast with the document name into the network
-            Console.WriteLine("Broadcasting for " + documentName);
-            using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+            TcpListener listener = new TcpListener(IPAddress.Any, listenPort);
+            try
             {
-                s.EnableBroadcast = true;
-                IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, broadcastPort);
+                // open listening port for incoming connection
+                listener.Start(1); // only listen for 1 connection
+                var peerTask = listener.AcceptTcpClientAsync();
 
-                byte[] bytes = Encoding.ASCII.GetBytes(documentName);
-                s.SendTo(bytes, ep);
+                    // send a broadcast with the document name into the network
+                    Console.WriteLine("Broadcasting for " + documentName);
+                    using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp) { EnableBroadcast = true })
+                    {
+                        IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, broadcastPort);
+                        s.SendTo(toBytes(documentName), ep);
+                    }
+
+                    // wait for an answer
+                    Console.WriteLine("Waiting for TCP connect");
+                    if (peerTask.Wait(linkEstablishTimeoutMs))
+                    {
+                        var tcp = peerTask.Result;
+                        Console.WriteLine("TCP connect from " + ((IPEndPoint)tcp.Client.RemoteEndPoint).Address);
+                        Console.WriteLine("Connection established");
+                        return new TcpPeer(tcp);
+                    }
+                    else
+                    {
+                        Console.WriteLine("No answer. I'm first owner");
+                        return null;
+                    }
             }
-
-            // wait for an answer
-            Console.WriteLine("Waiting for TCP connect");
-            TcpPeer peer = null;
-            if (peerTask.Wait(linkEstablishTimeoutMs))
+            finally
             {
-                var tcp = peerTask.Result;
-                var ep = (IPEndPoint)tcp.Client.RemoteEndPoint;
-                Console.WriteLine("TCP connect from " + ep.Address);
-
-                //Console.WriteLine("Establishing duplex link");
-                //var tcpOut = new TcpClient();
-                //try
-                //{
-                //    tcpOut.Connect(ep.Address, listenPort);
-                //}
-                //catch (Exception e)
-                //{
-                //    Console.WriteLine("Failed to connet: " + e);
-                //    tcpOut.Close();
-                //}
-                Console.WriteLine("Connection established");
-
-                //peer = new TcpPeer(tcpIn, tcpOut);
-                peer = new TcpPeer(tcp);
+                // stop listening
+                listener.Stop();
             }
-            else
-                Console.WriteLine("No answer. I'm first owner");
-
-            // stop listening
-            listener.Stop();
-
-            return peer;
         }
 
         bool IsLocalAddress(IPAddress address)
         {
             return Dns.GetHostAddresses(Dns.GetHostName()).Any(a => a.Equals(address));
+        }
+
+        void FireNewLinkEstablished(TcpPeer tcp)
+        {
+            // copy handler reference for thread safety
+            var handler = NewLinkEstablished;
+            if (handler != null)
+                handler(tcp);
         }
 
         /// <summary>
@@ -100,7 +106,7 @@ namespace SyncEd.Network.Tcp
             cancelSource = new CancellationTokenSource();
             var token = cancelSource.Token;
 
-            listenThread = new Thread(() => {
+            udpListenThread = new Thread(() => {
                 using (var udpClient = new UdpClient(broadcastPort)) {
                     udpClient.EnableBroadcast = true;
                     token.Register(() => udpClient.Close()); // causes Receive() to return
@@ -110,17 +116,15 @@ namespace SyncEd.Network.Tcp
                             var ep = new IPEndPoint(IPAddress.Any, broadcastPort);
                             byte[] bytes = udpClient.Receive(ref ep);
                             if (bytes != null && bytes.Length != 0) {
-                                string peerDocumentName = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
+                                string peerDocumentName = toString(bytes);
                                 Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, peerDocumentName);
 
                                 if (IsLocalAddress(ep.Address))
                                     Console.WriteLine("Self broadcast detected");
-                                else if (peerDocumentName == documentName) {
-                                    // create listener for duplex link
-                                    //var listener = new TcpListener(IPAddress.Any, listenPort);
-                                    //listener.Start(1);
-                                    //var peerTask = listener.AcceptTcpClientAsync();
-
+                                else if (peerDocumentName != documentName)
+                                    Console.WriteLine("Mismatch in document name");
+                                else
+                                {
                                     // establish connection to peer
                                     var tcp = new TcpClient();
                                     Console.WriteLine("TCP connect to " + ep.Address);
@@ -133,21 +137,9 @@ namespace SyncEd.Network.Tcp
                                         Console.WriteLine("Failed to connet: " + e);
                                         tcp.Close();
                                     }
-                                    //Console.WriteLine("Waiting for duplex link");
 
-                                    //if (peerTask.Wait(linkEstablishTimeoutMs))
-                                    //{
-                                    //    var tcpIn = peerTask.Result;
-                                        Console.WriteLine("Connection established");
-
-                                        if (NewLinkEstablished != null) // Warning: not thread safe
-                                            //NewLinkEstablished(new TcpPeer(tcpIn, tcpOut));
-                                            NewLinkEstablished(new TcpPeer(tcp));
-                                    //}
-                                    //else
-                                    //    tcpOut.Close();
-
-                                    //listener.Stop();
+                                    Console.WriteLine("Connection established");
+                                    FireNewLinkEstablished(new TcpPeer(tcp));
                                 }
                             }
                         } catch (Exception e) {
@@ -157,13 +149,13 @@ namespace SyncEd.Network.Tcp
                 }
             });
 
-            listenThread.Start();
+            udpListenThread.Start();
         }
 
         public void Close()
         {
             cancelSource.Cancel();
-            listenThread.Join();
+            udpListenThread.Join();
         }
     }
 }

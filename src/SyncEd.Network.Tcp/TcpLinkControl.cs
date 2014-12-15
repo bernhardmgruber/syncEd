@@ -16,17 +16,48 @@ namespace SyncEd.Network.Tcp
         public event DeleteTextPacketHandler DeleteTextPacketArrived;
         public event UpdateCaretPacketHandler UpdateCaretPacketArrived;
 
-        public TcpLinkEstablisher Establisher { get; set; }
+        private TcpLinkEstablisher establisher;
+        private List<TcpPeer> peers;
+        private BlockingCollection<Tuple<object, TcpPeer>> packets;
 
-        private List<TcpPeer> peers = new List<TcpPeer>();
-        public IList<TcpPeer> Peers { get { return peers; } }
+        /// <summary>
+        /// Starts the link control system which is responsible for managing links and packets
+        /// </summary>
+        /// <returns>Returns true if a peer could be found for the given document name</returns>
+        public bool Start(string documentName)
+        {
+            establisher = new TcpLinkEstablisher(documentName);
+            establisher.NewLinkEstablished += NewLinkEstablished;
+            var peer = establisher.FindPeer();
+            if (peer != null)
+                lock (peers)
+                    peers.Add(peer);
+            return peer != null;
+        }
 
-        private BlockingCollection<Tuple<object, TcpPeer>> packets = new BlockingCollection<Tuple<object, TcpPeer>>();
+        public void Stop()
+        {
+            establisher.Close();
+            peers.ForEach(p => p.Close());
+            establisher = null;
+            peers = new List<TcpPeer>();
+            packets = new BlockingCollection<Tuple<object, TcpPeer>>();
+        }
 
         void NewLinkEstablished(TcpPeer p)
         {
-            peers.Add(p);
+            lock (peers)
+                peers.Add(p);
             p.ObjectReceived += ObjectReveived;
+            p.Failed += PeerFailed;
+        }
+
+        void PeerFailed(TcpPeer sender)
+        {
+            lock (peers)
+                peers.Remove(sender);
+            sender.Close();
+            Panic(sender);
         }
 
         public void SendPacket(DocumentPacket packet)
@@ -58,24 +89,12 @@ namespace SyncEd.Network.Tcp
         {
             Console.WriteLine("TcpLinkControl: Outgoing: " + o.ToString());
 
-            foreach (TcpPeer p in peers)
-                if (p.Peer != exclude)
-                    p.SendAsync(o);
+            lock (peers)
+                foreach (TcpPeer p in peers)
+                    if (p.Peer != exclude)
+                        p.SendAsync(o);
         }
 
-        /// <summary>
-        /// Starts the link control system which is responsible for managing links and packets
-        /// </summary>
-        /// <returns>Returns true if a peer could be found for the given document name</returns>
-        public bool Start(string documentName)
-        {
-            Establisher = new TcpLinkEstablisher(documentName);
-            Establisher.NewLinkEstablished += NewLinkEstablished;
-            var peer = Establisher.FindPeer();
-            if (peer != null)
-                peers.Add(peer);
-            return peer != null;
-        }
 
         void ObjectReveived(object o, Peer peer)
         {
@@ -99,10 +118,10 @@ namespace SyncEd.Network.Tcp
                 Console.WriteLine("Unrecognized packet of type: " + o.GetType().AssemblyQualifiedName);
         }
 
-        public void Stop()
+        void Panic(TcpPeer deadPeer)
         {
-            Establisher.Close();
-            peers.ForEach(p => p.Close());
+            Console.WriteLine("PANIC - " + deadPeer.Peer.Address + " is dead");
+
         }
     }
 }
