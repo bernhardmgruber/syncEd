@@ -2,30 +2,28 @@
 
 namespace SyncEd.Network
 {
-	public delegate void DocumentPacketHandler(DocumentPacket packet, Peer peer);
-	public delegate void QueryDocumentPacketHandler(QueryDocumentPacket packet, Peer peer);
-	public delegate void AddTextPacketHandler(AddTextPacket packet, Peer peer);
-	public delegate void DeleteTextPacketHandler(DeleteTextPacket packet, Peer peer);
-	public delegate void UpdateCaretPacketHandler(UpdateCaretPacket packet, Peer peer);
+	public delegate void PacketHandler(object packet, Peer peer);
 
 	public interface INetwork
 	{
-		event DocumentPacketHandler DocumentPacketArrived;
-		event QueryDocumentPacketHandler QueryDocumentPacketArrived;
-		event AddTextPacketHandler AddTextPacketArrived;
-		event DeleteTextPacketHandler DeleteTextPacketArrived;
-		event UpdateCaretPacketHandler UpdateCaretPacketArrived;
+		event PacketHandler PacketArrived;
 
 		/// <summary>
 		/// Starts the network subsystem which is responsible for managing links and packets
 		/// </summary>
 		/// <returns>Returns true if a peer could be found for the given document name</returns>
 		bool Start(string documentName);
+
+		/// <summary>
+		/// Stops the network subsystem
+		/// </summary>
 		void Stop();
-		void SendPacket(DocumentPacket packet, Peer peer = null);
-		void SendPacket(QueryDocumentPacket packet, Peer peer = null);
-		void SendPacket(AddTextPacket packet, Peer peer = null);
-		void SendPacket(DeleteTextPacket packet, Peer peer = null);
-		void SendPacket(UpdateCaretPacket packet, Peer peer = null);
+
+		/// <summary>
+		/// Sends a packet into the network
+		/// </summary>
+		/// <param name="packet">Packet to send, can be any object</param>
+		/// <param name="peer">Optional. Receiver of the packet. If null is specified, the packet is broadcasted</param>
+		void SendPacket(object packet, Peer peer = null);
 	}
 }

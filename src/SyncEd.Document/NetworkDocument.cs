@@ -23,11 +23,12 @@ namespace SyncEd.Document
             documentText = new StringBuilder();
             carets = new Dictionary<Peer, int?>();
 
-            network.AddTextPacketArrived += network_AddTextPacketArrived;
-            network.DeleteTextPacketArrived += network_DeleteTextPacketArrived;
-            network.DocumentPacketArrived += network_DocumentPacketArrived;
-            network.QueryDocumentPacketArrived += network_QueryDocumentPacketArrived;
-            network.UpdateCaretPacketArrived += network_UpdateCaretPackageArrived;
+            var dispatcher = new PacketDispatcher(network);
+            dispatcher.AddTextPacketArrived += network_AddTextPacketArrived;
+            dispatcher.DeleteTextPacketArrived += network_DeleteTextPacketArrived;
+            dispatcher.DocumentPacketArrived += network_DocumentPacketArrived;
+            dispatcher.QueryDocumentPacketArrived += network_QueryDocumentPacketArrived;
+            dispatcher.UpdateCaretPacketArrived += network_UpdateCaretPackageArrived;
         }
 
         public bool IsConnected { get; private set; }
@@ -43,6 +44,7 @@ namespace SyncEd.Document
             return Task.Run(() => {
                 bool succes = network.Start(documentName);
                 IsConnected = true;
+                network.SendPacket(new QueryDocumentPacket());
                 return true; // we are always connected
             });
         }
@@ -73,7 +75,7 @@ namespace SyncEd.Document
 
         private void network_QueryDocumentPacketArrived(QueryDocumentPacket packet, Peer peer)
         {
-            network.SendPacket(new DocumentPacket() { Document = documentText.ToString() });
+            network.SendPacket(new DocumentPacket() { Document = documentText.ToString() }, peer);
         }
 
         private void network_DocumentPacketArrived(DocumentPacket packet, Peer peer)

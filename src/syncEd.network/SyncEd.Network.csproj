@@ -37,6 +37,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BroadcastAttribute.cs" />
+    <Compile Include="PacketDispatcher.cs" />
     <Compile Include="Packets\UpdateCaretPacket.cs" />
     <Compile Include="Packets\AddTextPacket.cs" />
     <Compile Include="Packets\DeleteTextPacket.cs" />
