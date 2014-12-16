@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace SyncEd.Network.Tcp
 {
 	public delegate void ObjectReceivedHandler(object o, Peer p);
-	public delegate void FailedHandler(TcpPeer sender);
+	public delegate void FailedHandler(TcpLink sender);
 
-	public class TcpPeer
+	public class TcpLink
 	{
 		public event ObjectReceivedHandler ObjectReceived;
 		public event FailedHandler Failed;
@@ -29,7 +29,7 @@ namespace SyncEd.Network.Tcp
 
 		private CancellationTokenSource cancelSource;
 
-		public TcpPeer(TcpClient tcp)
+		public TcpLink(TcpClient tcp)
 		{
 			Tcp = tcp;
 			Peer = new Peer() { Address = (tcp.Client.RemoteEndPoint as IPEndPoint).Address };

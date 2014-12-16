@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace SyncEd.Network.Tcp
 {
-	public delegate void NewLinkHandler(TcpPeer p);
+	public delegate void NewLinkHandler(TcpLink p);
 
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
 	public class TcpLinkEstablisher
@@ -68,7 +68,7 @@ namespace SyncEd.Network.Tcp
 					var tcp = peerTask.Result;
 					Console.WriteLine("TCP connect from " + ((IPEndPoint)tcp.Client.RemoteEndPoint).Address);
 					Console.WriteLine("Connection established");
-					FireNewLinkEstablished(new TcpPeer(tcp));
+					FireNewLinkEstablished(new TcpLink(tcp));
 					return true;
 				}
 				else
@@ -89,7 +89,7 @@ namespace SyncEd.Network.Tcp
 			return Dns.GetHostAddresses(Dns.GetHostName()).Any(a => a.Equals(address));
 		}
 
-		void FireNewLinkEstablished(TcpPeer tcp)
+		void FireNewLinkEstablished(TcpLink tcp)
 		{
 			// copy handler reference for thread safety
 			var handler = NewLinkEstablished;
@@ -145,7 +145,7 @@ namespace SyncEd.Network.Tcp
 									}
 
 									Console.WriteLine("Connection established");
-									FireNewLinkEstablished(new TcpPeer(tcp));
+									FireNewLinkEstablished(new TcpLink(tcp));
 								}
 							}
 						}

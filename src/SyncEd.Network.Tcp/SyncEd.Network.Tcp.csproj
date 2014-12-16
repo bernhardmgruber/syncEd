@@ -36,9 +36,9 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TcpLinkControl.cs" />
+    <Compile Include="TcpNetwork.cs" />
     <Compile Include="TcpLinkEstablisher.cs" />
-    <Compile Include="TcpPeer.cs" />
+    <Compile Include="TcpLink.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

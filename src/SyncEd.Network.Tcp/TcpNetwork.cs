@@ -8,13 +8,13 @@ using System.Threading;
 
 namespace SyncEd.Network.Tcp
 {
-	public class TcpLinkControl : INetwork
+	public class TcpNetwork : INetwork
 	{
 		public event PacketHandler PacketArrived;
 
 		private TcpLinkEstablisher establisher;
-		private List<TcpPeer> peers;
-		private BlockingCollection<Tuple<object, TcpPeer>> packets;
+		private List<TcpLink> peers;
+		private BlockingCollection<Tuple<object, TcpLink>> packets;
 
 		/// <summary>
 		/// Starts the link control system which is responsible for managing links and packets
@@ -23,7 +23,7 @@ namespace SyncEd.Network.Tcp
 		public bool Start(string documentName)
 		{
 			establisher = new TcpLinkEstablisher(documentName);
-			peers = new List<TcpPeer>();
+			peers = new List<TcpLink>();
 			establisher.NewLinkEstablished += NewLinkEstablished;
 			return establisher.FindPeer();
 		}
@@ -33,11 +33,11 @@ namespace SyncEd.Network.Tcp
 			establisher.Close();
 			peers.ForEach(p => p.Close());
 			establisher = null;
-			peers = new List<TcpPeer>();
-			packets = new BlockingCollection<Tuple<object, TcpPeer>>();
+			peers = new List<TcpLink>();
+			packets = new BlockingCollection<Tuple<object, TcpLink>>();
 		}
 
-		void NewLinkEstablished(TcpPeer p)
+		void NewLinkEstablished(TcpLink p)
 		{
 			lock (peers)
 				peers.Add(p);
@@ -45,7 +45,7 @@ namespace SyncEd.Network.Tcp
 			p.Failed += PeerFailed;
 		}
 
-		void PeerFailed(TcpPeer sender)
+		void PeerFailed(TcpLink sender)
 		{
 			lock (peers)
 				peers.Remove(sender);
@@ -74,7 +74,7 @@ namespace SyncEd.Network.Tcp
 			Console.WriteLine("TcpLinkControl: Outgoing (" + peers.Count + "): " + o.ToString());
 
 			lock (peers)
-				foreach (TcpPeer p in peers)
+				foreach (TcpLink p in peers)
 					if (p.Peer != exclude)
 						p.SendAsync(o);
 		}
@@ -90,7 +90,7 @@ namespace SyncEd.Network.Tcp
 			PacketArrived(o, peer);
 		}
 
-		void Panic(TcpPeer deadPeer)
+		void Panic(TcpLink deadPeer)
 		{
 			Console.WriteLine("PANIC - " + deadPeer.Peer.Address + " is dead");
 
