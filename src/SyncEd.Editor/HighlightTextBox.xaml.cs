@@ -44,8 +44,6 @@ namespace SyncEd.Editor
             set { SetValue(HighlightColorProperty, value); }
         }
 
-        private Point renderPoint;
-
         public HighlightTextBox()
         {
             InitializeComponent();
@@ -58,47 +56,46 @@ namespace SyncEd.Editor
 
         protected override void OnRender(DrawingContext drawingContext)
         {
+            if (string.IsNullOrEmpty(Text))
+            {
+                base.OnRender(drawingContext);
+                return;
+            }
+
             EnsureScrolling();
 
-            if (!IsEnabled) {
-                Foreground = (Brush)ForegroundProperty.DefaultMetadata.DefaultValue;
-                //Background = (Brush)BackgroundProperty.DefaultMetadata.DefaultValue;
-                Background = Brushes.LightGray;
-                base.OnRender(drawingContext);
-            } else {
-                Background = Foreground = Brushes.Transparent;
-                drawingContext.DrawRectangle(Brushes.White, new Pen(), new Rect(0, 0, ActualWidth, ActualHeight));
+            // save colors
+            var bg = Background;
+            var fg = Foreground;
+            Background = Foreground = Brushes.Transparent;
 
-                if (string.IsNullOrEmpty(Text))
-                    return;
+            // clear background and prepare clipping region
+            drawingContext.DrawRectangle(bg, new Pen(), new Rect(0, 0, ActualWidth, ActualHeight));
+            drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, this.ActualWidth, this.ActualHeight)));
 
-                var formattedText = new FormattedText(Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                                                      new Typeface(FontFamily.Source), FontSize,
-                                                      new SolidColorBrush(Colors.Black)) {
-                                                          Trimming = TextTrimming.None,
-                                                          MaxTextWidth = ViewportWidth,
-                                                          MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
-                                                      };
-                drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, this.ActualWidth, this.ActualHeight)));
+            // prepare text
+            var formattedText = new FormattedText(Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                                                    new Typeface(FontFamily.Source), FontSize, fg) {
+                                                        Trimming = TextTrimming.None,
+                                                        MaxTextWidth = ViewportWidth,
+                                                        MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
+                                                    };
 
-                foreach (var range in HighlightRanges) {
-                    if (range.Item1 < range.Item2 && Text.Length < range.Item2)
-                        formattedText.SetForegroundBrush(HighlightColor, range.Item1, range.Item2 - range.Item1);
-                }
-
-                //var firstCharRect = GetRectFromCharacterIndex(0);
-                //if (!double.IsInfinity(firstCharRect.Top))
-                //	renderPoint = new Point(firstCharRect.Left, firstCharRect.Top);
-                //renderPoint.Y -= VerticalOffset;
-
-                // from: http://www.codeproject.com/Articles/33939/CodeBox
-                double leftMargin = 4.0 + BorderThickness.Left;
-                double topMargin = 2 + BorderThickness.Top;
-
-                renderPoint = new Point(leftMargin, topMargin - VerticalOffset);
-
-                drawingContext.DrawText(formattedText, renderPoint);
+            foreach (var range in HighlightRanges) {
+                if (range.Item1 < range.Item2 && Text.Length < range.Item2)
+                    formattedText.SetForegroundBrush(HighlightColor, range.Item1, range.Item2 - range.Item1);
             }
+
+            // draw text
+            // from: http://www.codeproject.com/Articles/33939/CodeBox
+            double leftMargin = 4.0 + BorderThickness.Left;
+            double topMargin = 2 + BorderThickness.Top;
+
+            drawingContext.DrawText(formattedText, new Point(leftMargin, topMargin - VerticalOffset));
+
+            // restore colors
+            Background = bg;
+            Foreground = fg;
         }
 
         // from: http://www.codeproject.com/Articles/33939/CodeBox
