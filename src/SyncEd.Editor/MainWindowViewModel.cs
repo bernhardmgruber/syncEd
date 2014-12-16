@@ -6,6 +6,7 @@ using System.Windows.Input;
 using SyncEd.Document;
 using System.Windows;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace SyncEd.Editor
 {
@@ -30,7 +31,7 @@ namespace SyncEd.Editor
             get { return documentName; }
             set { SetProperty(ref documentName, value); }
         }
-        private string documentName = "(Document Name)";
+        private string documentName = "document name";
 
         public int NumberOfEditors
         {
@@ -74,15 +75,11 @@ namespace SyncEd.Editor
 
         public async void Connect()
         {
-            if (document.IsConnected)
-                return;
             CanConnect = false;
+            await Task.Run(() => document.Connect(DocumentName));
+            IsConnected = true;
 
-            IsConnected = await document.Connect(DocumentName);
-            CanConnect = !IsConnected;
-
-            if (IsConnected)
-                document.TextChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_DocumentTextChanged(s, e));
+            document.TextChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_DocumentTextChanged(s, e));
         }
 
         bool processingChangeFromNetwork = false;
@@ -99,11 +96,10 @@ namespace SyncEd.Editor
             }
         }
 
-        public void Close()
+        public async void Close()
         {
-            document.Close();
-            if (IsConnected)
-                document.TextChanged -= document_DocumentTextChanged;
+            await Task.Run(() => document.Close());
+            document.TextChanged -= document_DocumentTextChanged;
             CanConnect = true;
             IsConnected = false;
         }

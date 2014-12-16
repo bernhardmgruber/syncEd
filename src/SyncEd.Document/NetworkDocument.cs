@@ -33,29 +33,24 @@ namespace SyncEd.Document
 
         public bool IsConnected { get; private set; }
 
-        public Task<bool> Connect(string documentName)
+        public void Connect(string documentName)
         {
             if (IsConnected)
                 throw new NotSupportedException("Cannot connect when document is already connected.");
 
+            bool foundPeer = network.Start(documentName);
+            if (foundPeer)
+                network.SendPacket(new QueryDocumentPacket());
+
+            IsConnected = true;
             documentText.Clear();
             FireTextChanged();
-
-            return Task.Run(() => {
-                bool succes = network.Start(documentName);
-                IsConnected = true;
-                if(succes)
-                    network.SendPacket(new QueryDocumentPacket());
-                return true; // we are always connected
-            });
         }
 
-        public Task Close()
+        public void Close()
         {
-            return Task.Run(() => {
-                if (IsConnected)
-                    network.Stop();
-            });
+            if (IsConnected)
+                network.Stop();
         }
 
         private void network_AddTextPacketArrived(AddTextPacket packet, Peer peer)
