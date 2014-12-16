@@ -3,9 +3,9 @@ using System.Net;
 
 namespace SyncEd.Network
 {
-    [Serializable]
-    public class Peer
-    {
-        public IPAddress Address { get; set; }
-    }
+	[Serializable]
+	public class Peer
+	{
+		public IPAddress Address { get; set; }
+	}
 }

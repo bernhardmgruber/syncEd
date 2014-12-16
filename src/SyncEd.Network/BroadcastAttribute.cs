@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network
 {
-    [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-    public sealed class AutoForwardAttribute : Attribute
-    {
-    }
+	[AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+	public sealed class AutoForwardAttribute : Attribute
+	{
+	}
 }
