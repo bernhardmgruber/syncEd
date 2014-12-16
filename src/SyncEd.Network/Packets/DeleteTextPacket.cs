@@ -5,6 +5,7 @@ namespace SyncEd.Network.Packets
 {
     [Serializable]
     [DataContract]
+    [AutoForward]
     public class DeleteTextPacket
     {
         [DataMember]

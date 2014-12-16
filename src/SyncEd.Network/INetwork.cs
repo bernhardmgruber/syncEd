@@ -22,10 +22,10 @@ namespace SyncEd.Network
         /// <returns>Returns true if a peer could be found for the given document name</returns>
         bool Start(string documentName);
         void Stop();
-        void SendPacket(DocumentPacket packet);
-        void SendPacket(QueryDocumentPacket packet);
-        void SendPacket(AddTextPacket packet);
-        void SendPacket(DeleteTextPacket packet);
-        void SendPacket(UpdateCaretPacket packet);
+        void SendPacket(DocumentPacket packet, Peer peer = null);
+        void SendPacket(QueryDocumentPacket packet, Peer peer = null);
+        void SendPacket(AddTextPacket packet, Peer peer = null);
+        void SendPacket(DeleteTextPacket packet, Peer peer = null);
+        void SendPacket(UpdateCaretPacket packet, Peer peer = null);
     }
 }

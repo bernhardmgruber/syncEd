@@ -61,34 +61,48 @@ namespace SyncEd.Network.Tcp
             Panic(sender);
         }
 
-        public void SendPacket(DocumentPacket packet)
+        public void SendPacket(DocumentPacket packet, Peer peer = null)
         {
-            SendObject(packet);
+            SendObject(packet, peer);
         }
 
-        public void SendPacket(QueryDocumentPacket packet)
+        public void SendPacket(QueryDocumentPacket packet, Peer peer = null)
         {
-            SendObject(packet);
+            SendObject(packet, peer);
         }
 
-        public void SendPacket(AddTextPacket packet)
+        public void SendPacket(AddTextPacket packet, Peer peer = null)
         {
-            SendObject(packet);
+            SendObject(packet, peer);
         }
 
-        public void SendPacket(DeleteTextPacket packet)
+        public void SendPacket(DeleteTextPacket packet, Peer peer = null)
         {
-            SendObject(packet);
+            SendObject(packet, peer);
         }
 
-        public void SendPacket(UpdateCaretPacket packet)
+        public void SendPacket(UpdateCaretPacket packet, Peer peer = null)
         {
-            SendObject(packet);
+            SendObject(packet, peer);
         }
 
-        void SendObject(object o, Peer exclude = null)
+        void SendObject(object o, Peer peer = null)
         {
-            Console.WriteLine("TcpLinkControl: Outgoing: " + o.ToString());
+            if (peer == null)
+                BroadcastObject(o);
+            else
+                SendObjectTo(o, peer);
+        }
+
+        void SendObjectTo(object o, Peer peer)
+        {
+            lock (peers)
+                peers.Find(tcpPeer => tcpPeer.Peer == peer).SendAsync(o);
+        }
+
+        void BroadcastObject(object o, Peer exclude = null)
+        {
+            Console.WriteLine("TcpLinkControl: Outgoing (" + peers.Count + "): " + o.ToString());
 
             lock (peers)
                 foreach (TcpPeer p in peers)
@@ -96,13 +110,13 @@ namespace SyncEd.Network.Tcp
                         p.SendAsync(o);
         }
 
-
         void ObjectReveived(object o, Peer peer)
         {
             Console.WriteLine("TcpLinkControl: Incoming: " + o.ToString());
 
             // forward
-            SendObject(o, peer);
+            if(o.GetType().IsDefined(typeof(AutoForwardAttribute), true))
+                BroadcastObject(o, peer);
 
             // dispatch to UI
             if (o is AddTextPacket && AddTextPacketArrived != null)
