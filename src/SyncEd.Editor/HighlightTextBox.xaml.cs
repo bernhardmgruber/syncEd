@@ -58,13 +58,15 @@ namespace SyncEd.Editor
 
         protected override void OnRender(DrawingContext drawingContext)
         {
+            EnsureScrolling();
+
             if (!IsEnabled) {
                 Foreground = (Brush)ForegroundProperty.DefaultMetadata.DefaultValue;
                 //Background = (Brush)BackgroundProperty.DefaultMetadata.DefaultValue;
                 Background = Brushes.LightGray;
                 base.OnRender(drawingContext);
             } else {
-                Foreground = Background = Brushes.Transparent;
+                Background = Foreground = Brushes.Transparent;
                 drawingContext.DrawRectangle(Brushes.White, new Pen(), new Rect(0, 0, ActualWidth, ActualHeight));
 
                 if (string.IsNullOrEmpty(Text))
@@ -74,19 +76,41 @@ namespace SyncEd.Editor
                                                       new Typeface(FontFamily.Source), FontSize,
                                                       new SolidColorBrush(Colors.Black)) {
                                                           Trimming = TextTrimming.None,
-                                                          MaxTextWidth = ViewportWidth
+                                                          MaxTextWidth = ViewportWidth,
+                                                          MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
                                                       };
+                drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, this.ActualWidth, this.ActualHeight)));
 
                 foreach (var range in HighlightRanges) {
                     if (range.Item1 < range.Item2 && Text.Length < range.Item2)
                         formattedText.SetForegroundBrush(HighlightColor, range.Item1, range.Item2 - range.Item1);
                 }
 
-                var firstCharRect = GetRectFromCharacterIndex(0);
-                if (!double.IsInfinity(firstCharRect.Top))
-                    renderPoint = new Point(firstCharRect.Left, firstCharRect.Top);
+                //var firstCharRect = GetRectFromCharacterIndex(0);
+                //if (!double.IsInfinity(firstCharRect.Top))
+                //	renderPoint = new Point(firstCharRect.Left, firstCharRect.Top);
+                //renderPoint.Y -= VerticalOffset;
+
+                // from: http://www.codeproject.com/Articles/33939/CodeBox
+                double leftMargin = 4.0 + BorderThickness.Left;
+                double topMargin = 2 + BorderThickness.Top;
+
+                renderPoint = new Point(leftMargin, topMargin - VerticalOffset);
 
                 drawingContext.DrawText(formattedText, renderPoint);
+            }
+        }
+
+        // from: http://www.codeproject.com/Articles/33939/CodeBox
+        private bool scrollingEventEnabled = false;
+        private void EnsureScrolling()
+        {
+            if (!scrollingEventEnabled)
+            {
+                DependencyObject dp = VisualTreeHelper.GetChild(this, 0);
+                ScrollViewer sv = VisualTreeHelper.GetChild(dp, 0) as ScrollViewer;
+                sv.ScrollChanged += (s, e) => InvalidateVisual();
+                scrollingEventEnabled = true;
             }
         }
     }
