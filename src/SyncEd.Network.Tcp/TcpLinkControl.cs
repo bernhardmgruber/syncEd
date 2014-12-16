@@ -27,6 +27,7 @@ namespace SyncEd.Network.Tcp
         public bool Start(string documentName)
         {
             establisher = new TcpLinkEstablisher(documentName);
+            peers = new List<TcpPeer>();
             establisher.NewLinkEstablished += NewLinkEstablished;
             var peer = establisher.FindPeer();
             if (peer != null)
