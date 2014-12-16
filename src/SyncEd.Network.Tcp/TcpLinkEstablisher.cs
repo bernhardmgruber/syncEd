@@ -44,7 +44,7 @@ namespace SyncEd.Network.Tcp
 		/// <summary>
 		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
 		/// </summary>
-		public TcpPeer FindPeer()
+		public bool FindPeer()
 		{
 			TcpListener listener = new TcpListener(IPAddress.Any, listenPort);
 			try
@@ -68,12 +68,13 @@ namespace SyncEd.Network.Tcp
 					var tcp = peerTask.Result;
 					Console.WriteLine("TCP connect from " + ((IPEndPoint)tcp.Client.RemoteEndPoint).Address);
 					Console.WriteLine("Connection established");
-					return new TcpPeer(tcp);
+					FireNewLinkEstablished(new TcpPeer(tcp));
+					return true;
 				}
 				else
 				{
 					Console.WriteLine("No answer. I'm first owner");
-					return null;
+					return false;
 				}
 			}
 			finally

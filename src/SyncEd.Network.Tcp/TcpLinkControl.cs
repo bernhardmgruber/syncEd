@@ -25,11 +25,7 @@ namespace SyncEd.Network.Tcp
 			establisher = new TcpLinkEstablisher(documentName);
 			peers = new List<TcpPeer>();
 			establisher.NewLinkEstablished += NewLinkEstablished;
-			var peer = establisher.FindPeer();
-			if (peer != null)
-				lock (peers)
-					peers.Add(peer);
-			return peer != null;
+			return establisher.FindPeer();
 		}
 
 		public void Stop()
@@ -67,6 +63,8 @@ namespace SyncEd.Network.Tcp
 
 		void SendObjectTo(object o, Peer peer)
 		{
+			Console.WriteLine("TcpLinkControl: Outgoing (" + peer.ToString() + "): " + o.ToString());
+
 			lock (peers)
 				peers.Find(tcpPeer => tcpPeer.Peer == peer).SendAsync(o);
 		}

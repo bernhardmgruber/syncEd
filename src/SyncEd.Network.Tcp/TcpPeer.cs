@@ -78,14 +78,18 @@ namespace SyncEd.Network.Tcp
 		private void FireObjectReceived(object o)
 		{
 			var handler = ObjectReceived;
-			if (handler != null)
+			if (handler == null)
+				Console.Write("FATAL: No packet handler on TCP Peer " + ToString() + ". Packat lost.");
+			else
 				handler(o, Peer);
 		}
 
 		private void FireFailed()
 		{
 			var handler = Failed;
-			if (handler != null)
+			if (handler == null)
+				Console.Write("FATAL: No fail handler on TCP Peer " + ToString());
+			else
 				handler(this);
 		}
 
@@ -98,14 +102,14 @@ namespace SyncEd.Network.Tcp
 		{
 			cancelSource.Cancel();
 			Tcp.GetStream().Close();
-			Tcp.Close();
 			sendThread.Join();
 			recvThread.Join();
+			Tcp.Close();
 		}
 
 		public override string ToString()
 		{
-			return "TcpPeer { " + (Tcp.Client.RemoteEndPoint as IPEndPoint).Address + "}";
+			return "TcpPeer {" + (Tcp.Client.RemoteEndPoint as IPEndPoint).Address + "}";
 		}
 	}
 }

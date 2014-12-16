@@ -44,7 +44,8 @@ namespace SyncEd.Document
             return Task.Run(() => {
                 bool succes = network.Start(documentName);
                 IsConnected = true;
-                network.SendPacket(new QueryDocumentPacket());
+                if(succes)
+                    network.SendPacket(new QueryDocumentPacket());
                 return true; // we are always connected
             });
         }
@@ -94,10 +95,19 @@ namespace SyncEd.Document
 
         public void ChangeText(int offset, int length, string text, bool guiSource)
         {
-            if (length > 0)
-                network.SendPacket(new DeleteTextPacket() { Offset = offset, Length = length });
-            if (text.Length > 0)
-                network.SendPacket(new AddTextPacket() { Offset = offset, Text = text });
+            lock (documentText)
+            {
+                if (length > 0)
+                {
+                    documentText.Remove(offset, length);
+                    network.SendPacket(new DeleteTextPacket() { Offset = offset, Length = length });
+                }
+                if (text.Length > 0)
+                {
+                    documentText.Insert(offset, text);
+                    network.SendPacket(new AddTextPacket() { Offset = offset, Text = text });
+                }
+            }
 
             FireTextChanged(guiSource);
         }
