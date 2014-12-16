@@ -7,12 +7,9 @@ namespace SyncEd.Document
     {
         public string Text { get; private set; }
 
-        public bool GuiSource { get; set; }
-
-        public DocumentTextChangedEventArgs(string text, bool guiSource)
+        public DocumentTextChangedEventArgs(string text)
         {
             Text = text;
-            GuiSource = guiSource;
         }
     }
 }

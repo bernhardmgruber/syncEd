@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using SyncEd.Document;
+using System.Windows;
+using System.Diagnostics;
 
 namespace SyncEd.Editor
 {
@@ -80,14 +82,20 @@ namespace SyncEd.Editor
             CanConnect = !IsConnected;
 
             if (IsConnected)
-                document.TextChanged += document_DocumentTextChanged;
+                document.TextChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_DocumentTextChanged(s, e));
         }
+
+        bool processingChangeFromNetwork = false;
 
         public void ChangeText(ICollection<TextChange> changes, UndoAction undoAction)
         {
-            foreach (var textChange in changes) {
-                string phrase = DocumentText.Substring(textChange.Offset, textChange.AddedLength);
-                document.ChangeText(textChange.Offset, textChange.RemovedLength, phrase, true);
+            if (!processingChangeFromNetwork)
+            {
+                foreach (var textChange in changes)
+                {
+                    string phrase = DocumentText.Substring(textChange.Offset, textChange.AddedLength);
+                    document.ChangeText(textChange.Offset, textChange.RemovedLength, phrase);
+                }
             }
         }
 
@@ -102,7 +110,10 @@ namespace SyncEd.Editor
 
         private void document_DocumentTextChanged(object sender, DocumentTextChangedEventArgs e)
         {
+            Console.WriteLine("change from network");
+            processingChangeFromNetwork = true;
             DocumentText = e.Text;
+            processingChangeFromNetwork = false;
         }
     }
 }

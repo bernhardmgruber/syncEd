@@ -93,7 +93,8 @@ namespace SyncEd.Document
             FireCaretPositionChanged(peer, packet.Position);
         }
 
-        public void ChangeText(int offset, int length, string text, bool guiSource)
+        // is called when the text is changed by the UI
+        public void ChangeText(int offset, int length, string text)
         {
             lock (documentText)
             {
@@ -108,17 +109,13 @@ namespace SyncEd.Document
                     network.SendPacket(new AddTextPacket() { Offset = offset, Text = text });
                 }
             }
-
-            FireTextChanged(guiSource);
         }
 
-        protected void FireTextChanged(bool guiSource = false)
+        protected void FireTextChanged()
         {
-            if (!guiSource) {
-                string text = documentText.ToString();
-                if (TextChanged != null)
-                    TextChanged(this, new DocumentTextChangedEventArgs(text, guiSource));
-            }
+            string text = documentText.ToString();
+            if (TextChanged != null)
+                TextChanged(this, new DocumentTextChangedEventArgs(text));
         }
         public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
 

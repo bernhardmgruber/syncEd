@@ -9,7 +9,7 @@ namespace SyncEd.Document
         Task<bool> Connect(string documentName);
         Task Close();
 
-        void ChangeText(int offset, int length, string text, bool guiSource);
+        void ChangeText(int offset, int length, string text);
         event EventHandler<DocumentTextChangedEventArgs> TextChanged;
     }
 }
