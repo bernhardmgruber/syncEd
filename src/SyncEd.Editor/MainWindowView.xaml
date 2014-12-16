@@ -24,9 +24,15 @@
         </Border>
 
         <Border Margin="5" Padding="5">
-            <editor:HighlightTextBox Text="{Binding DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsConnected, Mode=OneWay}"
-                     TextChanged="TextChanged"
-                     AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+            <editor:HighlightTextBox
+                Text="{Binding DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                IsEnabled="{Binding IsConnected, Mode=OneWay}"
+                SelectionChanged="SelectionChanged"
+                TextChanged="TextChanged"
+                AcceptsReturn="True"
+                AcceptsTab="True"
+                TextWrapping="Wrap"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"/>
         </Border>
     </DockPanel>
 </Window>

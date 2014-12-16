@@ -95,6 +95,10 @@ namespace SyncEd.Editor
                 }
             }
         }
+        public void ChangeCaretPos(int pos)
+        {
+            document.ChangeCaretPos(pos);
+        }
 
         public async void Close()
         {

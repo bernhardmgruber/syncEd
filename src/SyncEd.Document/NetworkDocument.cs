@@ -106,6 +106,11 @@ namespace SyncEd.Document
             }
         }
 
+        public void ChangeCaretPos(int pos)
+        {
+            network.SendPacket(new UpdateCaretPacket() { Position = pos });
+        }
+
         protected void FireTextChanged()
         {
             string text = documentText.ToString();
@@ -122,6 +127,7 @@ namespace SyncEd.Document
         }
 
         public event EventHandler<CaretChangedEventArgs> CaretChanged;
+
 
     }
 }
