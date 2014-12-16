@@ -15,7 +15,7 @@ namespace SyncEd.Network.Tcp
     {
         const int broadcastPort = 1337; // UDP port for sending broadcasts
         const int listenPort = 1338;    // TCP port for listening after broadcasts
-        const int linkEstablishTimeoutMs = 3000;
+        const int linkEstablishTimeoutMs = 1000;
 
         public event NewLinkHandler NewLinkEstablished;
 
