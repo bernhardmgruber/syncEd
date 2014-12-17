@@ -20,56 +20,32 @@ namespace SyncEd.Network.Tcp
 
 		public Peer Peer { get; private set; }
 
-		private TcpClient Tcp { get; set; }
-
-		//private Thread sendThread;
+		private TcpClient tcp;
+		private NetworkStream stream;
 		private Thread recvThread;
-
-		//private BlockingCollection<object> sendColl = new BlockingCollection<object>();
-
-		private CancellationTokenSource cancelSource;
+		private bool closed = false;
 
 		public TcpLink(TcpClient tcp)
 		{
-			Tcp = tcp;
+			this.tcp = tcp;
+			this.stream = tcp.GetStream();
 			Peer = new Peer() { Address = (tcp.Client.RemoteEndPoint as IPEndPoint).Address };
+		}
 
-			cancelSource = new CancellationTokenSource();
-			var token = cancelSource.Token;
-
-			//sendThread = new Thread(new ThreadStart(() =>
-			//{
-			//	while (!token.IsCancellationRequested)
-			//	{
-			//		try
-			//		{
-			//			var o = sendColl.Take(token);
-			//			var f = new BinaryFormatter();
-			//			f.Serialize(Tcp.GetStream(), o);
-			//		}
-			//		catch (Exception e)
-			//		{
-			//			Console.WriteLine("Send in " + ToString() + " failed: " + e);
-			//			FireFailed();
-			//		}
-			//	}
-			//}));
-			//sendThread.Start();
-
+		public void Start()
+		{
 			recvThread = new Thread(() =>
 			{
 				var f = new BinaryFormatter();
-				while (!token.IsCancellationRequested)
+				try
 				{
-					try
-					{
-						FireObjectReceived(f.Deserialize(Tcp.GetStream()));
-					}
-					catch (Exception e)
-					{
-						Console.WriteLine("Receive in " + ToString() + " failed: " + e);
-						FireFailed();
-					}
+					while (true)
+						FireObjectReceived(f.Deserialize(stream));
+				}
+				catch (Exception)
+				{
+					//Console.WriteLine("Receive in " + ToString() + " failed: " + e);
+					FireFailed();
 				}
 			});
 			recvThread.Start();
@@ -78,52 +54,48 @@ namespace SyncEd.Network.Tcp
 		private void FireObjectReceived(object o)
 		{
 			var handler = ObjectReceived;
-			if (handler == null)
-				Console.Write("FATAL: No packet handler on TCP Peer " + ToString() + ". Packat lost.");
-			else
-				handler(o, Peer);
+			Debug.Assert(handler != null, "FATAL: No packet handler on TCP Peer " + this + ". Packet lost.");
+			handler(o, Peer);
 		}
 
 		private void FireFailed()
 		{
 			var handler = Failed;
-			if (handler == null)
-				Console.Write("FATAL: No fail handler on TCP Peer " + ToString());
-			else
-				handler(this);
+			Debug.Assert(handler != null, "FATAL: No fail handler on TCP Peer " + this);
+			Task.Run(() => handler(this)); // when failing, the fail handler have to run on another thread than the threads used by this TcpLink as these threads have to be shut down
 		}
 
-		public void Send(object o)
+		public void Send(byte[] bytes)
 		{
 			try
 			{
-				var f = new BinaryFormatter();
-				f.Serialize(Tcp.GetStream(), o);
+				stream.WriteAsync(bytes, 0, bytes.Length);
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine("Send in " + ToString() + " failed: " + e);
+				Console.WriteLine("Send in " + this + " failed: " + e);
 				FireFailed();
 			}
 		}
 
-		//public void SendAsync(object o)
-		//{
-		//	sendColl.Add(o);
-		//}
-
 		public void Close()
 		{
-			cancelSource.Cancel();
-			Tcp.GetStream().Close();
-			//sendThread.Join();
-			recvThread.Join();
-			Tcp.Close();
+			if (!closed)
+			{
+				Console.WriteLine("Closing Link " + this);
+				closed = true;
+				stream.Dispose(); // closes socket and causes receiver thread to FireFailed() if it is still running
+				recvThread.Join();
+				tcp.Close();
+			}
 		}
 
 		public override string ToString()
 		{
-			return "TcpPeer {" + (Tcp.Client.RemoteEndPoint as IPEndPoint).Address + "}";
+			if (!closed)
+				return "TcpPeer {" + (tcp.Client.RemoteEndPoint as IPEndPoint).Address + "}";
+			else
+				return "TcpPeer {dead}";
 		}
 	}
 }

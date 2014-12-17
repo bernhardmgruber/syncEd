@@ -13,16 +13,14 @@ namespace SyncEd.Network.Tcp
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
 	public class TcpLinkEstablisher
 	{
-		const int broadcastPort = 1337; // UDP port for sending broadcasts
-		const int listenPort = 1338;    // TCP port for listening after broadcasts
-		const int linkEstablishTimeoutMs = 1000;
-
 		public event NewLinkHandler NewLinkEstablished;
 
+		private const int broadcastPort = 1337; // UDP port for sending broadcasts
+		private const int listenPort = 1338;    // TCP port for listening after broadcasts
+		private const int linkEstablishTimeoutMs = 1000;
+
+		private UdpClient udp;
 		private Thread udpListenThread;
-
-		private CancellationTokenSource cancelSource;
-
 		private string documentName;
 
 		public TcpLinkEstablisher(string documentName)
@@ -104,55 +102,59 @@ namespace SyncEd.Network.Tcp
 		/// <param name="documentName"></param>
 		void StartListeningForPeers()
 		{
-			cancelSource = new CancellationTokenSource();
-			var token = cancelSource.Token;
+			udp = new UdpClient(broadcastPort);
+			udp.EnableBroadcast = true;
 
 			udpListenThread = new Thread(() =>
 			{
-				using (var udpClient = new UdpClient(broadcastPort))
+				while (true)
 				{
-					udpClient.EnableBroadcast = true;
-					token.Register(() => udpClient.Close()); // causes Receive() to return
-					while (!token.IsCancellationRequested)
+					try
 					{
+						Console.WriteLine("Waiting for broadcast");
+						var ep = new IPEndPoint(IPAddress.Any, broadcastPort);
+						byte[] bytes;
 						try
 						{
-							Console.WriteLine("Waiting for broadcast");
-							var ep = new IPEndPoint(IPAddress.Any, broadcastPort);
-							byte[] bytes = udpClient.Receive(ref ep);
-							if (bytes != null && bytes.Length != 0)
+							bytes = udp.Receive(ref ep);
+						}
+						catch (Exception)
+						{
+							// asume the socket has been closed for shutting down
+							return;
+						}
+						if (bytes != null && bytes.Length != 0)
+						{
+							string peerDocumentName = toString(bytes);
+							Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, peerDocumentName);
+
+							if (IsLocalAddress(ep.Address))
+								Console.WriteLine("Self broadcast detected");
+							else if (peerDocumentName != documentName)
+								Console.WriteLine("Mismatch in document name");
+							else
 							{
-								string peerDocumentName = toString(bytes);
-								Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, peerDocumentName);
-
-								if (IsLocalAddress(ep.Address))
-									Console.WriteLine("Self broadcast detected");
-								else if (peerDocumentName != documentName)
-									Console.WriteLine("Mismatch in document name");
-								else
+								// establish connection to peer
+								var tcp = new TcpClient();
+								Console.WriteLine("TCP connect to " + ep.Address);
+								try
 								{
-									// establish connection to peer
-									var tcp = new TcpClient();
-									Console.WriteLine("TCP connect to " + ep.Address);
-									try
-									{
-										tcp.Connect(ep.Address, listenPort);
-									}
-									catch (Exception e)
-									{
-										Console.WriteLine("Failed to connet: " + e);
-										tcp.Close();
-									}
-
-									Console.WriteLine("Connection established");
-									FireNewLinkEstablished(new TcpLink(tcp));
+									tcp.Connect(ep.Address, listenPort);
 								}
+								catch (Exception e)
+								{
+									Console.WriteLine("Failed to connet: " + e);
+									tcp.Close();
+								}
+
+								Console.WriteLine("Connection established");
+								FireNewLinkEstablished(new TcpLink(tcp));
 							}
 						}
-						catch (Exception e)
-						{
-							Console.WriteLine("Exception in UDP broadcast listening: " + e.ToString());
-						}
+					}
+					catch (Exception e)
+					{
+						Console.WriteLine("Exception in UDP broadcast listening: " + e.ToString());
 					}
 				}
 			});
@@ -162,7 +164,7 @@ namespace SyncEd.Network.Tcp
 
 		public void Close()
 		{
-			cancelSource.Cancel();
+			udp.Close();
 			udpListenThread.Join();
 		}
 	}
