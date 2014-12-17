@@ -10,10 +10,11 @@ namespace SyncEd.Document
     public class NetworkDocument
         : IDocument
     {
+        public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
+        public event EventHandler<CaretChangedEventArgs> CaretChanged;
+
         private readonly INetwork network;
-
         private readonly StringBuilder documentText;
-
         private readonly IDictionary<Peer, int?> carets;
 
         public NetworkDocument(INetwork network)
@@ -117,7 +118,6 @@ namespace SyncEd.Document
             if (TextChanged != null)
                 TextChanged(this, new DocumentTextChangedEventArgs(text));
         }
-        public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
 
         protected void FireCaretPositionChanged(Peer peer, int? position)
         {
@@ -126,7 +126,6 @@ namespace SyncEd.Document
             }
         }
 
-        public event EventHandler<CaretChangedEventArgs> CaretChanged;
 
 
     }

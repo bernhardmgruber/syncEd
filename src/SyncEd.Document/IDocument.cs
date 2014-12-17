@@ -6,6 +6,7 @@ namespace SyncEd.Document
     public interface IDocument
     {
         event EventHandler<DocumentTextChangedEventArgs> TextChanged;
+        event EventHandler<CaretChangedEventArgs> CaretChanged;
 
         bool IsConnected { get; }
         void Connect(string documentName);

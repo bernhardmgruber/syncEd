@@ -20,12 +20,12 @@ namespace SyncEd.Editor
             this.document = document;
         }
 
-        public FlowDocument Document
-        {
-            get { return flowDocument; }
-            set { SetProperty(ref flowDocument, value); }
-        }
-        private FlowDocument flowDocument;
+        //public FlowDocument Document
+        //{
+        //	get { return flowDocument; }
+        //	set { SetProperty(ref flowDocument, value); }
+        //}
+        //private FlowDocument flowDocument;
         public string DocumentName
         {
             get { return documentName; }
@@ -80,6 +80,12 @@ namespace SyncEd.Editor
             IsConnected = true;
 
             document.TextChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_DocumentTextChanged(s, e));
+            document.CaretChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_CaretChanged(s, e));
+        }
+
+        void document_CaretChanged(object sender, CaretChangedEventArgs e)
+        {
+            Console.WriteLine("UI: caret from " + e.Peer + " changed to " + e.Position); // TODO
         }
 
         bool processingChangeFromNetwork = false;
@@ -97,7 +103,8 @@ namespace SyncEd.Editor
         }
         public void ChangeCaretPos(int pos)
         {
-            document.ChangeCaretPos(pos);
+            if(!processingChangeFromNetwork)
+                document.ChangeCaretPos(pos);
         }
 
         public async void Close()
@@ -110,7 +117,6 @@ namespace SyncEd.Editor
 
         private void document_DocumentTextChanged(object sender, DocumentTextChangedEventArgs e)
         {
-            Console.WriteLine("change from network");
             processingChangeFromNetwork = true;
             DocumentText = e.Text;
             processingChangeFromNetwork = false;
