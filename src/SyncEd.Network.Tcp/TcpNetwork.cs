@@ -30,7 +30,6 @@ namespace SyncEd.Network.Tcp
 
 		private TcpLinkEstablisher establisher;
 		private List<TcpLink> links;
-		private BlockingCollection<Tuple<object, TcpLink>> packets;
 
 		public Peer Self { get; private set; }
 
@@ -50,14 +49,15 @@ namespace SyncEd.Network.Tcp
 		public void Stop()
 		{
 			establisher.Close();
-			links.ForEach(p => p.Close());
 			establisher = null;
+			lock (links)
+				links.ForEach(p => p.Close());
 			links = new List<TcpLink>();
-			packets = new BlockingCollection<Tuple<object, TcpLink>>();
 		}
 		private void OwnIPDetected(IPAddress address)
 		{
 			Self = new Peer() { Address = address };
+			Console.WriteLine("Own IP determined as " + address);
 		}
 
 		private void NewLinkEstablished(TcpLink p)
@@ -101,12 +101,12 @@ namespace SyncEd.Network.Tcp
 			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
 			if (peer == null)
 			{
-				Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet.ToString());
+				Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
 				BroadcastBytes(data);
 			}
 			else
 			{
-				Console.WriteLine("TcpLinkControl: Outgoing (" + peer.ToString() + "): " + packet.ToString());
+				Console.WriteLine("TcpLinkControl: Outgoing (" + peer.Address + "): " + packet);
 				SendBytes(data, peer);
 			}
 		}
@@ -133,9 +133,8 @@ namespace SyncEd.Network.Tcp
 
 		private void ObjectReveived(TcpLink link, object o)
 		{
-			Console.WriteLine("TcpLinkControl: Incoming: " + o.ToString());
-
 			var po = o as PeerObject;
+			Console.WriteLine("TcpLinkControl: Incoming (" + po.Peer.Address + "): " + po.Object);
 
 			// forward
 			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
@@ -147,6 +146,12 @@ namespace SyncEd.Network.Tcp
 		private void Panic(TcpLink deadLink)
 		{
 			Console.WriteLine("PANIC - " + deadLink + " is dead");
+
+			//TODO
+
+			// for now, just declare one peer dead
+			ObjectReveived(deadLink, new PeerObject() { Object = new LostPeerPacket(), Peer = Self });
+
 		}
 	}
 }

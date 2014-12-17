@@ -92,7 +92,7 @@ namespace SyncEd.Network.Tcp
 
 		public override string ToString()
 		{
-			return "TcpPeer {" + Address + "}";
+			return "TcpLink {" + Address + "}";
 		}
 	}
 }
