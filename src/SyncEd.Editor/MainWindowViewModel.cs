@@ -20,12 +20,6 @@ namespace SyncEd.Editor
             this.document = document;
         }
 
-        //public FlowDocument Document
-        //{
-        //	get { return flowDocument; }
-        //	set { SetProperty(ref flowDocument, value); }
-        //}
-        //private FlowDocument flowDocument;
         public string DocumentName
         {
             get { return documentName; }
@@ -38,7 +32,7 @@ namespace SyncEd.Editor
             get { return numberOfEditors; }
             set { SetProperty(ref numberOfEditors, value); }
         }
-        private int numberOfEditors = 0;
+        private int numberOfEditors = 1;
 
         public string DocumentText
         {
@@ -81,6 +75,7 @@ namespace SyncEd.Editor
 
             document.TextChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_DocumentTextChanged(s, e));
             document.CaretChanged += (s, e) => Application.Current.Dispatcher.InvokeAsync(() => document_CaretChanged(s, e));
+            document.PeerCountChanged += (s, e) => NumberOfEditors = e.Count;
         }
 
         void document_CaretChanged(object sender, CaretChangedEventArgs e)

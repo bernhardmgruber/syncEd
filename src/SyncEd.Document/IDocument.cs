@@ -7,6 +7,7 @@ namespace SyncEd.Document
     {
         event EventHandler<DocumentTextChangedEventArgs> TextChanged;
         event EventHandler<CaretChangedEventArgs> CaretChanged;
+        event EventHandler<PeerCountChangedEventArgs> PeerCountChanged;
 
         bool IsConnected { get; }
         void Connect(string documentName);

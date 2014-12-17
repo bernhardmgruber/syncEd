@@ -12,10 +12,13 @@ namespace SyncEd.Document
     {
         public event EventHandler<DocumentTextChangedEventArgs> TextChanged;
         public event EventHandler<CaretChangedEventArgs> CaretChanged;
+        public event EventHandler<PeerCountChangedEventArgs> PeerCountChanged;
 
         private readonly INetwork network;
         private readonly StringBuilder documentText;
         private readonly IDictionary<Peer, int?> carets;
+
+        private int peerCount = 1; // initially, there is only me :)
 
         public NetworkDocument(INetwork network)
         {
@@ -30,6 +33,10 @@ namespace SyncEd.Document
             dispatcher.DocumentPacketArrived += network_DocumentPacketArrived;
             dispatcher.QueryDocumentPacketArrived += network_QueryDocumentPacketArrived;
             dispatcher.UpdateCaretPacketArrived += network_UpdateCaretPackageArrived;
+            dispatcher.NewPeerPacketArrived += dispatcher_NewPeerPacketArrived;
+            dispatcher.LostPeerPacketArrived += dispatcher_LostPeerPacketArrived;
+            dispatcher.QueryPeerCountPacketArrived += dispatcher_QueryPeerCountPacketArrived;
+            dispatcher.PeerCountPacketArrived += dispatcher_PeerCountPacketArrived;
         }
 
         public bool IsConnected { get; private set; }
@@ -41,7 +48,11 @@ namespace SyncEd.Document
 
             bool foundPeer = network.Start(documentName);
             if (foundPeer)
-                network.SendPacket(new QueryDocumentPacket());
+            {
+                network.SendPacket(new NewPeerPacket()); // neighbors add me to their count
+                network.SendPacket(new QueryDocumentPacket()); 
+                network.SendPacket(new QueryPeerCountPacket()); // ask neighbor for his count
+            }
 
             IsConnected = true;
             documentText.Clear();
@@ -75,6 +86,11 @@ namespace SyncEd.Document
             network.SendPacket(new DocumentPacket() { Document = documentText.ToString() }, peer);
         }
 
+        private void dispatcher_QueryPeerCountPacketArrived(QueryPeerCountPacket packet, Peer peer)
+        {
+            network.SendPacket(new PeerCountPacket() { Count = peerCount }, peer);
+        }
+
         private void network_DocumentPacketArrived(DocumentPacket packet, Peer peer)
         {
             lock (documentText) {
@@ -84,9 +100,27 @@ namespace SyncEd.Document
             FireTextChanged();
         }
 
+        private void dispatcher_PeerCountPacketArrived(PeerCountPacket packet, Peer peer)
+        {
+            peerCount = packet.Count;
+            FirePeerCountChanged();
+        }
+
         private void network_UpdateCaretPackageArrived(UpdateCaretPacket packet, Peer peer)
         {
             FireCaretPositionChanged(peer, packet.Position);
+        }
+
+        void dispatcher_NewPeerPacketArrived(NewPeerPacket packet, Peer peer)
+        {
+            peerCount++;
+            FirePeerCountChanged();
+        }
+
+        void dispatcher_LostPeerPacketArrived(LostPeerPacket packet, Peer peer)
+        {
+            peerCount--;
+            FirePeerCountChanged();
         }
 
         // is called when the text is changed by the UI
@@ -126,7 +160,11 @@ namespace SyncEd.Document
             }
         }
 
-
-
+        protected void FirePeerCountChanged()
+        {
+            var handler = PeerCountChanged;
+            if (handler != null)
+                handler(this, new PeerCountChangedEventArgs(peerCount));
+        }
     }
 }

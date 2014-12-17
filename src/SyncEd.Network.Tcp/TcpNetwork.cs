@@ -11,19 +11,20 @@ using System.Diagnostics;
 
 namespace SyncEd.Network.Tcp
 {
+	[Serializable]
+	internal class PeerObject
+	{
+		internal Peer Peer { get; set; }
+		internal object Object { get; set; }
+
+		public override string ToString()
+		{
+			return "PeerObject {" + Peer + ", " + Object + "}";
+		}
+	}
+
 	public class TcpNetwork : INetwork
 	{
-		[Serializable]
-		private class PeerObject
-		{
-			internal Peer Peer { get; set; }
-			internal object Object { get; set; }
-
-			public override string ToString()
-			{
-				return "PeerObject {" + Peer + ", " + Object + "}";
-			}
-		}
 
 		public event PacketHandler PacketArrived;
 
@@ -80,16 +81,11 @@ namespace SyncEd.Network.Tcp
 		{
 			using (var ms = new MemoryStream())
 			{
-				// keep place for an int
-				//ms.Position = sizeof(int);
-
 				// serialize packet
 				var f = new BinaryFormatter();
 				f.Serialize(ms, o);
 
-				// write length of serialized data
-				//ms.Write(BitConverter.GetBytes((int)ms.Length - sizeof(int)), 0, sizeof(int));
-
+				// shrink buffer
 				byte[] bytes = new byte[ms.Length];
 				ms.Position = 0;
 				ms.Read(bytes, 0, (int)ms.Length);
