@@ -22,10 +22,10 @@ namespace SyncEd.Network.Tcp
 
 		private TcpClient Tcp { get; set; }
 
-		private Thread sendThread;
+		//private Thread sendThread;
 		private Thread recvThread;
 
-		private BlockingCollection<object> sendColl = new BlockingCollection<object>();
+		//private BlockingCollection<object> sendColl = new BlockingCollection<object>();
 
 		private CancellationTokenSource cancelSource;
 
@@ -37,24 +37,24 @@ namespace SyncEd.Network.Tcp
 			cancelSource = new CancellationTokenSource();
 			var token = cancelSource.Token;
 
-			sendThread = new Thread(new ThreadStart(() =>
-			{
-				while (!token.IsCancellationRequested)
-				{
-					try
-					{
-						var o = sendColl.Take(token);
-						var f = new BinaryFormatter();
-						f.Serialize(Tcp.GetStream(), o);
-					}
-					catch (Exception e)
-					{
-						Console.WriteLine("Send in " + ToString() + " failed: " + e);
-						FireFailed();
-					}
-				}
-			}));
-			sendThread.Start();
+			//sendThread = new Thread(new ThreadStart(() =>
+			//{
+			//	while (!token.IsCancellationRequested)
+			//	{
+			//		try
+			//		{
+			//			var o = sendColl.Take(token);
+			//			var f = new BinaryFormatter();
+			//			f.Serialize(Tcp.GetStream(), o);
+			//		}
+			//		catch (Exception e)
+			//		{
+			//			Console.WriteLine("Send in " + ToString() + " failed: " + e);
+			//			FireFailed();
+			//		}
+			//	}
+			//}));
+			//sendThread.Start();
 
 			recvThread = new Thread(() =>
 			{
@@ -93,16 +93,30 @@ namespace SyncEd.Network.Tcp
 				handler(this);
 		}
 
-		public void SendAsync(object o)
+		public void Send(object o)
 		{
-			sendColl.Add(o);
+			try
+			{
+				var f = new BinaryFormatter();
+				f.Serialize(Tcp.GetStream(), o);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Send in " + ToString() + " failed: " + e);
+				FireFailed();
+			}
 		}
+
+		//public void SendAsync(object o)
+		//{
+		//	sendColl.Add(o);
+		//}
 
 		public void Close()
 		{
 			cancelSource.Cancel();
 			Tcp.GetStream().Close();
-			sendThread.Join();
+			//sendThread.Join();
 			recvThread.Join();
 			Tcp.Close();
 		}

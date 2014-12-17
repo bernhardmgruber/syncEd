@@ -66,7 +66,7 @@ namespace SyncEd.Network.Tcp
 			Console.WriteLine("TcpLinkControl: Outgoing (" + peer.ToString() + "): " + o.ToString());
 
 			lock (peers)
-				peers.Find(tcpPeer => tcpPeer.Peer == peer).SendAsync(o);
+				peers.Find(tcpPeer => tcpPeer.Peer == peer).Send(o);
 		}
 
 		void BroadcastObject(object o, Peer exclude = null)
@@ -76,7 +76,7 @@ namespace SyncEd.Network.Tcp
 			lock (peers)
 				foreach (TcpLink p in peers)
 					if (p.Peer != exclude)
-						p.SendAsync(o);
+						p.Send(o);
 		}
 
 		void ObjectReveived(object o, Peer peer)
