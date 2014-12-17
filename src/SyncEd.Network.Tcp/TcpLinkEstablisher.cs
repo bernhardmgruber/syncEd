@@ -9,11 +9,13 @@ using System.Linq;
 namespace SyncEd.Network.Tcp
 {
 	public delegate void NewLinkHandler(TcpLink p);
+	public delegate void OwnIPDetectedHandler(IPAddress a);
 
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
-	public class TcpLinkEstablisher
+	internal class TcpLinkEstablisher
 	{
 		public event NewLinkHandler NewLinkEstablished;
+		public event OwnIPDetectedHandler OwnIPDetected;
 
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
 		private const int listenPort = 1338;    // TCP port for listening after broadcasts
@@ -23,7 +25,7 @@ namespace SyncEd.Network.Tcp
 		private Thread udpListenThread;
 		private string documentName;
 
-		public TcpLinkEstablisher(string documentName)
+		internal TcpLinkEstablisher(string documentName)
 		{
 			this.documentName = documentName;
 			StartListeningForPeers();
@@ -42,7 +44,7 @@ namespace SyncEd.Network.Tcp
 		/// <summary>
 		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
 		/// </summary>
-		public bool FindPeer()
+		internal bool FindPeer()
 		{
 			TcpListener listener = new TcpListener(IPAddress.Any, listenPort);
 			try
@@ -82,12 +84,12 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		bool IsLocalAddress(IPAddress address)
+		private bool IsLocalAddress(IPAddress address)
 		{
 			return Dns.GetHostAddresses(Dns.GetHostName()).Any(a => a.Equals(address));
 		}
 
-		void FireNewLinkEstablished(TcpLink tcp)
+		private void FireNewLinkEstablished(TcpLink tcp)
 		{
 			// copy handler reference for thread safety
 			var handler = NewLinkEstablished;
@@ -95,12 +97,19 @@ namespace SyncEd.Network.Tcp
 				handler(tcp);
 		}
 
+		private void FireOwnIPDetected(IPAddress address)
+		{
+			var handler = OwnIPDetected;
+			if (handler != null)
+				handler(address);
+		}
+
 		/// <summary>
 		/// Listens on the network for new peers with the given document name.
 		/// If such a peer connects, the NewLinkEstablished event is fired.
 		/// </summary>
 		/// <param name="documentName"></param>
-		void StartListeningForPeers()
+		internal void StartListeningForPeers()
 		{
 			udp = new UdpClient(broadcastPort);
 			udp.EnableBroadcast = true;
@@ -129,7 +138,10 @@ namespace SyncEd.Network.Tcp
 							Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, peerDocumentName);
 
 							if (IsLocalAddress(ep.Address))
+							{
 								Console.WriteLine("Self broadcast detected");
+								FireOwnIPDetected(ep.Address);
+							}
 							else if (peerDocumentName != documentName)
 								Console.WriteLine("Mismatch in document name");
 							else
@@ -162,7 +174,8 @@ namespace SyncEd.Network.Tcp
 			udpListenThread.Start();
 		}
 
-		public void Close()
+
+		internal void Close()
 		{
 			udp.Close();
 			udpListenThread.Join();

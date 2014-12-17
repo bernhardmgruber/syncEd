@@ -6,16 +6,32 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.IO;
+using System.Net;
+using System.Diagnostics;
 
 namespace SyncEd.Network.Tcp
 {
 	public class TcpNetwork : INetwork
 	{
+		[Serializable]
+		private class PeerObject
+		{
+			internal Peer Peer { get; set; }
+			internal object Object { get; set; }
+
+			public override string ToString()
+			{
+				return "PeerObject {" + Peer + ", " + Object + "}";
+			}
+		}
+
 		public event PacketHandler PacketArrived;
 
 		private TcpLinkEstablisher establisher;
-		private List<TcpLink> peers;
+		private List<TcpLink> links;
 		private BlockingCollection<Tuple<object, TcpLink>> packets;
+
+		public Peer Self { get; private set; }
 
 		/// <summary>
 		/// Starts the link control system which is responsible for managing links and packets
@@ -23,39 +39,44 @@ namespace SyncEd.Network.Tcp
 		/// <returns>Returns true if a peer could be found for the given document name</returns>
 		public bool Start(string documentName)
 		{
+			links = new List<TcpLink>();
 			establisher = new TcpLinkEstablisher(documentName);
-			peers = new List<TcpLink>();
 			establisher.NewLinkEstablished += NewLinkEstablished;
+			establisher.OwnIPDetected += OwnIPDetected;
 			return establisher.FindPeer();
 		}
 
 		public void Stop()
 		{
 			establisher.Close();
-			peers.ForEach(p => p.Close());
+			links.ForEach(p => p.Close());
 			establisher = null;
-			peers = new List<TcpLink>();
+			links = new List<TcpLink>();
 			packets = new BlockingCollection<Tuple<object, TcpLink>>();
 		}
-
-		void NewLinkEstablished(TcpLink p)
+		private void OwnIPDetected(IPAddress address)
 		{
-			lock (peers)
-				peers.Add(p);
+			Self = new Peer() { Address = address };
+		}
+
+		private void NewLinkEstablished(TcpLink p)
+		{
+			lock (links)
+				links.Add(p);
 			p.ObjectReceived += ObjectReveived;
 			p.Failed += PeerFailed;
 			p.Start();
 		}
 
-		void PeerFailed(TcpLink link)
+		private void PeerFailed(TcpLink link)
 		{
-			lock (peers)
-				peers.Remove(link);
+			lock (links)
+				links.Remove(link);
 			link.Close();
 			Panic(link);
 		}
 
-		byte[] Serialize(object o)
+		private byte[] Serialize(object o)
 		{
 			using (var ms = new MemoryStream())
 			{
@@ -79,10 +100,12 @@ namespace SyncEd.Network.Tcp
 
 		public void SendPacket(object packet, Peer peer = null)
 		{
-			byte[] data = Serialize(packet);
+			Debug.Assert(Self != null, "Own IP has not been determined for send");
+
+			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
 			if (peer == null)
 			{
-				Console.WriteLine("TcpLinkControl: Outgoing (" + peers.Count + "): " + packet.ToString());
+				Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet.ToString());
 				BroadcastBytes(data);
 			}
 			else
@@ -92,34 +115,42 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		void SendBytes(byte[] bytes, Peer peer)
+		private void SendBytes(byte[] bytes, Peer peer)
 		{
-			lock (peers)
-				peers.Find(tcpPeer => tcpPeer.Peer == peer).Send(bytes);
+			lock (links)
+			{
+				var link = links.Find(tcpPeer => tcpPeer.Address.Equals(peer.Address));
+				if (link == null)
+					Console.WriteLine("Warning: Sending packages to peers which are not directly connected is not supported. Dropping package");
+				else
+					link.Send(bytes);
+			}
 		}
 
-		void BroadcastBytes(byte[] bytes, Peer exclude = null)
+		private void BroadcastBytes(byte[] bytes, TcpLink exclude = null)
 		{
-			lock (peers)
-				foreach (TcpLink p in peers)
-					if (p.Peer != exclude)
-						p.Send(bytes);
+			lock (links)
+				foreach (TcpLink l in links)
+					if (l != exclude)
+						l.Send(bytes);
 		}
 
-		void ObjectReveived(object o, Peer peer)
+		private void ObjectReveived(TcpLink link, object o)
 		{
 			Console.WriteLine("TcpLinkControl: Incoming: " + o.ToString());
 
-			// forward
-			if (o.GetType().IsDefined(typeof(AutoForwardAttribute), true))
-				BroadcastBytes(Serialize(o), peer);
+			var po = o as PeerObject;
 
-			PacketArrived(o, peer);
+			// forward
+			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
+				BroadcastBytes(Serialize(po), link);
+
+			PacketArrived(po.Object, po.Peer);
 		}
 
-		void Panic(TcpLink deadPeer)
+		private void Panic(TcpLink deadLink)
 		{
-			Console.WriteLine("PANIC - " + deadPeer.Peer.Address + " is dead");
+			Console.WriteLine("PANIC - " + deadLink + " is dead");
 		}
 	}
 }

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network.Tcp
 {
-	public delegate void ObjectReceivedHandler(object o, Peer p);
+	public delegate void ObjectReceivedHandler(TcpLink sender, object o);
 	public delegate void FailedHandler(TcpLink sender);
 
 	public class TcpLink
@@ -18,7 +18,7 @@ namespace SyncEd.Network.Tcp
 		public event ObjectReceivedHandler ObjectReceived;
 		public event FailedHandler Failed;
 
-		public Peer Peer { get; private set; }
+		internal IPAddress Address { get; private set; }
 
 		private TcpClient tcp;
 		private NetworkStream stream;
@@ -28,8 +28,8 @@ namespace SyncEd.Network.Tcp
 		public TcpLink(TcpClient tcp)
 		{
 			this.tcp = tcp;
-			this.stream = tcp.GetStream();
-			Peer = new Peer() { Address = (tcp.Client.RemoteEndPoint as IPEndPoint).Address };
+			stream = tcp.GetStream();
+			Address = (tcp.Client.RemoteEndPoint as IPEndPoint).Address;
 		}
 
 		public void Start()
@@ -55,7 +55,7 @@ namespace SyncEd.Network.Tcp
 		{
 			var handler = ObjectReceived;
 			Debug.Assert(handler != null, "FATAL: No packet handler on TCP Peer " + this + ". Packet lost.");
-			handler(o, Peer);
+			handler(this, o);
 		}
 
 		private void FireFailed()
@@ -92,10 +92,7 @@ namespace SyncEd.Network.Tcp
 
 		public override string ToString()
 		{
-			if (!closed)
-				return "TcpPeer {" + (tcp.Client.RemoteEndPoint as IPEndPoint).Address + "}";
-			else
-				return "TcpPeer {dead}";
+			return "TcpPeer {" + Address + "}";
 		}
 	}
 }

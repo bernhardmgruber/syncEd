@@ -8,6 +8,8 @@ namespace SyncEd.Network
 	{
 		event PacketHandler PacketArrived;
 
+		Peer Self { get; }
+
 		/// <summary>
 		/// Starts the network subsystem which is responsible for managing links and packets
 		/// </summary>
