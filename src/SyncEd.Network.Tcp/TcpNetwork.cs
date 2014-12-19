@@ -25,11 +25,11 @@ namespace SyncEd.Network.Tcp
 
 	public class TcpNetwork : INetwork
 	{
-
 		public event PacketHandler PacketArrived;
 
 		private TcpLinkEstablisher establisher;
 		private List<TcpLink> links;
+		private ManualResetEvent selfSetWaithandle;
 
 		public Peer Self { get; private set; }
 
@@ -39,11 +39,15 @@ namespace SyncEd.Network.Tcp
 		/// <returns>Returns true if a peer could be found for the given document name</returns>
 		public bool Start(string documentName)
 		{
+			selfSetWaithandle = new ManualResetEvent(false);
 			links = new List<TcpLink>();
 			establisher = new TcpLinkEstablisher(documentName);
 			establisher.NewLinkEstablished += NewLinkEstablished;
 			establisher.OwnIPDetected += OwnIPDetected;
-			return establisher.FindPeer();
+			bool found = establisher.FindPeer();
+			selfSetWaithandle.WaitOne(); // wait for listener thread to receive self broadcast and determine own IP
+			selfSetWaithandle.Dispose();
+			return found;
 		}
 
 		public void Stop()
@@ -58,6 +62,7 @@ namespace SyncEd.Network.Tcp
 		{
 			Self = new Peer() { Address = address };
 			Console.WriteLine("Own IP determined as " + address);
+			selfSetWaithandle.Set();
 		}
 
 		private void NewLinkEstablished(TcpLink p)

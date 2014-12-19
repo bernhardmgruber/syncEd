@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Diagnostics;
 
 namespace SyncEd.Network.Tcp
 {
@@ -14,15 +15,21 @@ namespace SyncEd.Network.Tcp
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
 	internal class TcpLinkEstablisher
 	{
-		public event NewLinkHandler NewLinkEstablished;
-		public event OwnIPDetectedHandler OwnIPDetected;
+		internal event NewLinkHandler NewLinkEstablished;
+		internal event OwnIPDetectedHandler OwnIPDetected;
+
+		private const char documentPortSeparator = '\0';
 
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
-		private const int listenPort = 1338;    // TCP port for listening after broadcasts
 		private const int linkEstablishTimeoutMs = 1000;
+
+		private int tcpListenPort = 1338;    // first tried TCP port for listening after broadcasts
 
 		private UdpClient udp;
 		private Thread udpListenThread;
+
+		private TcpListener tcpListener;
+
 		private string documentName;
 
 		internal TcpLinkEstablisher(string documentName)
@@ -46,41 +53,27 @@ namespace SyncEd.Network.Tcp
 		/// </summary>
 		internal bool FindPeer()
 		{
-			TcpListener listener = new TcpListener(IPAddress.Any, listenPort);
-			try
+			Debug.Assert(!tcpListener.Pending());
+			var peerTask = tcpListener.AcceptTcpClientAsync();
+
+			// send a broadcast with the document name into the network
+			Console.WriteLine("Broadcasting for " + documentName);
+			udp.Client.SendTo(toBytes(documentName + documentPortSeparator + tcpListenPort), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
+
+			// wait for an answer
+			Console.WriteLine("Waiting for TCP connect");
+			if (peerTask.Wait(linkEstablishTimeoutMs))
 			{
-				// open listening port for incoming connection
-				listener.Start(1); // only listen for 1 connection
-				var peerTask = listener.AcceptTcpClientAsync();
-
-				// send a broadcast with the document name into the network
-				Console.WriteLine("Broadcasting for " + documentName);
-				using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp) { EnableBroadcast = true })
-				{
-					IPEndPoint ep = new IPEndPoint(IPAddress.Broadcast, broadcastPort);
-					s.SendTo(toBytes(documentName), ep);
-				}
-
-				// wait for an answer
-				Console.WriteLine("Waiting for TCP connect");
-				if (peerTask.Wait(linkEstablishTimeoutMs))
-				{
-					var tcp = peerTask.Result;
-					Console.WriteLine("TCP connect from " + ((IPEndPoint)tcp.Client.RemoteEndPoint).Address);
-					Console.WriteLine("Connection established");
-					FireNewLinkEstablished(new TcpLink(tcp));
-					return true;
-				}
-				else
-				{
-					Console.WriteLine("No answer. I'm first owner");
-					return false;
-				}
+				var tcp = peerTask.Result;
+				Console.WriteLine("TCP connect from " + ((IPEndPoint)tcp.Client.RemoteEndPoint).Address);
+				Console.WriteLine("Connection established");
+				FireNewLinkEstablished(new TcpLink(tcp));
+				return true;
 			}
-			finally
+			else
 			{
-				// stop listening
-				listener.Stop();
+				Console.WriteLine("No answer. I'm first owner");
+				return false;
 			}
 		}
 
@@ -104,14 +97,41 @@ namespace SyncEd.Network.Tcp
 				handler(address);
 		}
 
+		private TcpListener FindTcpListener()
+		{
+			// find and open TCP listening port for incoming connection
+			while(true)
+			{
+				try
+				{
+					var l = new TcpListener(IPAddress.Any, tcpListenPort);
+					l.Start(1); // only listen for 1 connection
+					Console.WriteLine("Started TCP listener on port " + tcpListenPort);
+					return l;
+				}
+				catch (SocketException)
+				{
+					//Console.WriteLine("Failed to establish TCP listener on port " + tcpListenPort + ": " + e);
+					tcpListenPort++;
+					if(tcpListenPort >= 0xFFFF)
+						throw new Exception("Failed to find a TCP port for listening");
+					continue;
+				}
+			}
+		}
+
 		/// <summary>
 		/// Listens on the network for new peers with the given document name.
 		/// If such a peer connects, the NewLinkEstablished event is fired.
 		/// </summary>
 		/// <param name="documentName"></param>
-		internal void StartListeningForPeers()
+		private void StartListeningForPeers()
 		{
-			udp = new UdpClient(broadcastPort);
+			tcpListener = FindTcpListener();
+
+			udp = new UdpClient();
+			udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+			udp.Client.Bind(new IPEndPoint(IPAddress.Any, broadcastPort));
 			udp.EnableBroadcast = true;
 
 			udpListenThread = new Thread(() =>
@@ -134,10 +154,13 @@ namespace SyncEd.Network.Tcp
 						}
 						if (bytes != null && bytes.Length != 0)
 						{
-							string peerDocumentName = toString(bytes);
+							var parts = toString(bytes).Split(documentPortSeparator);
+							Debug.Assert(parts.Length == 2);
+							string peerDocumentName = parts[0];
+							int remoteTcpListenPort = int.Parse(parts[1]);
 							Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, peerDocumentName);
 
-							if (IsLocalAddress(ep.Address))
+							if (IsLocalAddress(ep.Address) && remoteTcpListenPort == tcpListenPort)
 							{
 								Console.WriteLine("Self broadcast detected");
 								FireOwnIPDetected(ep.Address);
@@ -148,10 +171,10 @@ namespace SyncEd.Network.Tcp
 							{
 								// establish connection to peer
 								var tcp = new TcpClient();
-								Console.WriteLine("TCP connect to " + ep.Address);
+								Console.WriteLine("TCP connect to " + ep.Address + ":" + remoteTcpListenPort);
 								try
 								{
-									tcp.Connect(ep.Address, listenPort);
+									tcp.Connect(ep.Address, remoteTcpListenPort);
 								}
 								catch (Exception e)
 								{
@@ -177,6 +200,7 @@ namespace SyncEd.Network.Tcp
 
 		internal void Close()
 		{
+			tcpListener.Stop();
 			udp.Close();
 			udpListenThread.Join();
 		}
