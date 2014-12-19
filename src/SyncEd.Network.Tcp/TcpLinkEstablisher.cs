@@ -13,6 +13,7 @@ namespace SyncEd.Network.Tcp
 	public delegate void NewLinkHandler(TcpLink p);
 	public delegate void OwnIPDetectedHandler(IPEndPoint a);
 
+	[Serializable]
 	internal class UdpPacket
 	{
 		internal string DocumentName { get; set; }
