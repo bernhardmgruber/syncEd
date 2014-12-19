@@ -6,26 +6,28 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Diagnostics;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace SyncEd.Network.Tcp
 {
 	public delegate void NewLinkHandler(TcpLink p);
 	public delegate void OwnIPDetectedHandler(IPEndPoint a);
 
-	[Serializable]
-	internal class FindPacket
+	internal class UdpPacket
 	{
-		string DocumentName { get; set; }
-
-		int ListenPort { get; set; }
+		internal string DocumentName { get; set; }
 	}
 
 	[Serializable]
-	internal class PeerDiedPacket
+	internal class FindPacket : UdpPacket
 	{
-		string DocumentName { get; set; }
+		internal int ListenPort { get; set; }
+	}
 
-		Peer Peer {get; set;}
+	[Serializable]
+	internal class PeerDiedPacket : UdpPacket
+	{
+		internal Peer Peer { get; set; }
 	}
 
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
@@ -46,22 +48,14 @@ namespace SyncEd.Network.Tcp
 
 		private TcpListener tcpListener;
 
+		private BinaryFormatter formatter = new BinaryFormatter();
+
 		private string documentName;
 
 		internal TcpLinkEstablisher(string documentName)
 		{
 			this.documentName = documentName;
 			StartListeningForPeers();
-		}
-
-		private byte[] ToBytes(string str)
-		{
-			return Encoding.Unicode.GetBytes(str);
-		}
-
-		private string ToString(byte[] bytes)
-		{
-			return Encoding.Unicode.GetString(bytes);
 		}
 
 		/// <summary>
@@ -74,7 +68,7 @@ namespace SyncEd.Network.Tcp
 
 			// send a broadcast with the document name into the network
 			Console.WriteLine("Broadcasting for " + documentName);
-			udp.Client.SendTo(ToBytes('0' + documentName + documentPortSeparator + tcpListenPort), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
+			udp.Client.SendTo(Utils.Serialize(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort }), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
 
 			// wait for an answer
 			Console.WriteLine("Waiting for TCP connect");
@@ -88,9 +82,10 @@ namespace SyncEd.Network.Tcp
 				int remotePort = BitConverter.ToInt32(portBytes, 0);
 
 				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
-				Console.WriteLine("TCP connect from " + address + ":" + remotePort);
+				var peerEp = new IPEndPoint(address, remotePort);
+				Console.WriteLine("TCP connect from " + peerEp);
 				Console.WriteLine("Connection established");
-				FireNewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = new IPEndPoint(address, remotePort) }));
+				FireNewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEp }));
 				return true;
 			}
 			else
@@ -123,7 +118,7 @@ namespace SyncEd.Network.Tcp
 		private TcpListener FindTcpListener()
 		{
 			// find and open TCP listening port for incoming connection
-			while(true)
+			while (true)
 			{
 				try
 				{
@@ -136,7 +131,7 @@ namespace SyncEd.Network.Tcp
 				{
 					//Console.WriteLine("Failed to establish TCP listener on port " + tcpListenPort + ": " + e);
 					tcpListenPort++;
-					if(tcpListenPort >= 0xFFFF)
+					if (tcpListenPort >= 0xFFFF)
 						throw new Exception("Failed to find a TCP port for listening");
 					continue;
 				}
@@ -177,43 +172,50 @@ namespace SyncEd.Network.Tcp
 						}
 						if (bytes != null && bytes.Length != 0)
 						{
-							var str = ToString(bytes);
-							if(str[0] == '0')
+							var packet = (UdpPacket)Utils.Deserialize(bytes);
+							Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, packet.DocumentName);
+							if (packet.DocumentName == documentName)
 							{
-								var parts = str.Substring(1).Split(documentPortSeparator);
-								Debug.Assert(parts.Length == 2);
-								string peerDocumentName = parts[0];
-								int remoteTcpListenPort = int.Parse(parts[1]);
-								Console.WriteLine("Received broadcast from {0}: {1}:{2}", ep.Address, peerDocumentName, remoteTcpListenPort);
-
-								if (IsLocalAddress(ep.Address) && remoteTcpListenPort == tcpListenPort)
+								if (packet is FindPacket)
 								{
-									Console.WriteLine("Self broadcast detected");
-									FireOwnIPDetected(new IPEndPoint(ep.Address, remoteTcpListenPort));
+									var p = packet as FindPacket;
+
+									if (IsLocalAddress(ep.Address) && p.ListenPort == tcpListenPort)
+									{
+										Console.WriteLine("Self broadcast detected");
+										FireOwnIPDetected(new IPEndPoint(ep.Address, tcpListenPort));
+									}
+									else
+									{
+										// establish connection to peer
+										var tcp = new TcpClient();
+										var peerEP = new IPEndPoint(ep.Address, p.ListenPort);
+										Console.WriteLine("TCP connect to " + peerEP);
+										try
+										{
+											tcp.Connect(peerEP);
+											tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
+										}
+										catch (Exception e)
+										{
+											Console.WriteLine("Failed to connet: " + e);
+											tcp.Close();
+										}
+
+										Console.WriteLine("Connection established");
+										FireNewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEP }));
+									}
 								}
-								else if (peerDocumentName != documentName)
-									Console.WriteLine("Mismatch in document name");
-								else
+								else if (packet is PeerDiedPacket)
 								{
-									// establish connection to peer
-									var tcp = new TcpClient();
-									var peerEP = new IPEndPoint(ep.Address, remoteTcpListenPort);
-									Console.WriteLine("TCP connect to " + peerEP);
-									try
-									{
-										tcp.Connect(peerEP);
-										tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
-									}
-									catch (Exception e)
-									{
-										Console.WriteLine("Failed to connet: " + e);
-										tcp.Close();
-									}
+									var p = packet as PeerDiedPacket;
 
-									Console.WriteLine("Connection established");
-									FireNewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEP }));
+									// check all links if they are affected
+
 								}
 							}
+							else
+								Console.WriteLine("Document mismatch");
 						}
 					}
 					catch (Exception e)
@@ -226,17 +228,18 @@ namespace SyncEd.Network.Tcp
 			udpListenThread.Start();
 		}
 
+		internal void Panic(TcpLink deadLink)
+		{
+			// inform peers that a link died
+			var bytes = Utils.Serialize(new PeerDiedPacket() { DocumentName = documentName, Peer = deadLink.Peer });
+			udp.Send(bytes, bytes.Length);
+		}
 
 		internal void Close()
 		{
 			tcpListener.Stop();
 			udp.Close();
 			udpListenThread.Join();
-		}
-
-		internal void Panic(TcpLink deadLink)
-		{
-			//udp.Send('1' + documentName + documentPortSeparator + 
 		}
 	}
 }

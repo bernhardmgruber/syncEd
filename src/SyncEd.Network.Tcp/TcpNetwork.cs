@@ -58,6 +58,16 @@ namespace SyncEd.Network.Tcp
 				links.ForEach(p => p.Close());
 			links = new List<TcpLink>();
 		}
+
+		public void SendPacket(object packet)
+		{
+			Debug.Assert(Self != null, "Own IP has not been determined for send");
+
+			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
+			Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
+			BroadcastBytes(data);
+		}
+
 		private void OwnIPDetected(IPEndPoint address)
 		{
 			Self = new Peer() { EndPoint = address };
@@ -97,15 +107,6 @@ namespace SyncEd.Network.Tcp
 
 				return bytes;
 			}
-		}
-
-		public void SendPacket(object packet)
-		{
-			Debug.Assert(Self != null, "Own IP has not been determined for send");
-
-			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
-			Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
-			BroadcastBytes(data);
 		}
 
 		private void SendPacket(object packet, TcpLink link)
