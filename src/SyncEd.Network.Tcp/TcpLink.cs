@@ -18,14 +18,17 @@ namespace SyncEd.Network.Tcp
 		public event ObjectReceivedHandler ObjectReceived;
 		public event FailedHandler Failed;
 
+		public Peer Peer { get; private set; }
+
 		private TcpClient tcp;
 		private NetworkStream stream;
 		private Thread recvThread;
 		private bool closed = false;
 
-		public TcpLink(TcpClient tcp)
+		public TcpLink(TcpClient tcp, Peer peer)
 		{
 			this.tcp = tcp;
+			this.Peer = peer;
 			stream = tcp.GetStream();
 		}
 

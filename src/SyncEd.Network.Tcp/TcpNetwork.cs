@@ -146,11 +146,16 @@ namespace SyncEd.Network.Tcp
 		{
 			Console.WriteLine("PANIC - " + deadLink + " is dead");
 
-			//TODO
+			// assume I'm the first peer which noticed
+			establisher.Panic(deadLink);
+
+
+
+
+
 
 			// for now, just declare one peer dead
 			ObjectReveived(deadLink, new PeerObject() { Object = new LostPeerPacket(), Peer = Self });
-
 		}
 	}
 }
