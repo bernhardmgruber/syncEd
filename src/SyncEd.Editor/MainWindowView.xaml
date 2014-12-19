@@ -27,6 +27,7 @@
             <editor:HighlightTextBox
                 Text="{Binding DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 IsEnabled="{Binding IsConnected, Mode=OneWay}"
+                HighlightRanges="{Binding HighlightedRanges}"
                 SelectionChanged="SelectionChanged"
                 TextChanged="TextChanged"
                 AcceptsReturn="True"

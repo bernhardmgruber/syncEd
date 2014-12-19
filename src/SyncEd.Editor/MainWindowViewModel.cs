@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -7,6 +8,8 @@ using SyncEd.Document;
 using System.Windows;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Collections.ObjectModel;
+using System.Windows.Media;
 
 namespace SyncEd.Editor
 {
@@ -14,6 +17,7 @@ namespace SyncEd.Editor
         : ViewModelBase
     {
         private readonly IDocument document;
+        private ICollection<Caret> carets = new List<Caret>();
 
         public MainWindowViewModel(IDocument document)
         {
@@ -48,11 +52,14 @@ namespace SyncEd.Editor
         }
         private bool isConnected = false;
 
-        /*public IEnumerable<int> Carets
-        {
-            
-        }*/
+        
 
+        public ObservableCollection<Tuple<int, int, Color>> HighlightedRanges
+        {
+            get { return highlightedRanges; }
+            set { SetProperty(ref highlightedRanges, value); }
+        }
+        private ObservableCollection<Tuple<int, int, Color>> highlightedRanges = new ObservableCollection<Tuple<int, int, Color>>();
 
         public bool CanConnect
         {
@@ -80,7 +87,28 @@ namespace SyncEd.Editor
 
         void document_CaretChanged(object sender, CaretChangedEventArgs e)
         {
-            Console.WriteLine("UI: caret from " + e.Peer + " changed to " + e.Position); // TODO
+            Console.WriteLine("UI: caret from " + e.Peer + " changed to " + e.Position);
+            var caret = carets.Where(c => c.Peer.Equals(e.Peer)).FirstOrDefault();
+            if (caret == null)
+            {
+                // new caret
+                if(e.Position.HasValue) // new position
+                    carets.Add(new Caret() { Peer = e.Peer, Position = e.Position.Value, Color = e.Peer.Color() });
+            }
+            else
+            {
+                // known caret
+                if (e.Position.HasValue) // new position
+                    caret.Position = e.Position.Value;
+                else // no position, remove it
+                    carets.Remove(caret);
+            }
+
+            // build highlighted ranges. TODO: this can be done more efficient by just replacing values
+            const int caretLockDist = 3;
+            HighlightedRanges = new ObservableCollection<Tuple<int,int,Color>>(
+                carets.Select(c => Tuple.Create(c.Position - caretLockDist, c.Position + caretLockDist, c.Color))
+            );
         }
 
         bool processingChangeFromNetwork = false;

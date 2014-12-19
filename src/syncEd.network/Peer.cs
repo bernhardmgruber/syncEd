@@ -11,6 +11,19 @@ namespace SyncEd.Network
 		[DataMember]
 		public IPAddress Address { get; set; }
 
+		public override bool Equals(object obj)
+		{
+			if (obj is Peer)
+				return (obj as Peer).Address.Equals(Address);
+			else
+				return false;
+		}
+
+		public override int GetHashCode()
+		{
+			return Address.GetHashCode();
+		}
+
 		public override string ToString()
 		{
 			return "Peer {" + Address.ToString() + "}";
