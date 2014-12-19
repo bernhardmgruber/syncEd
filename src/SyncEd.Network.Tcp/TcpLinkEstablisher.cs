@@ -38,12 +38,12 @@ namespace SyncEd.Network.Tcp
 			StartListeningForPeers();
 		}
 
-		private byte[] toBytes(string str)
+		private byte[] ToBytes(string str)
 		{
 			return Encoding.Unicode.GetBytes(str);
 		}
 
-		private string toString(byte[] bytes)
+		private string ToString(byte[] bytes)
 		{
 			return Encoding.Unicode.GetString(bytes);
 		}
@@ -58,7 +58,7 @@ namespace SyncEd.Network.Tcp
 
 			// send a broadcast with the document name into the network
 			Console.WriteLine("Broadcasting for " + documentName);
-			udp.Client.SendTo(toBytes(documentName + documentPortSeparator + tcpListenPort), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
+			udp.Client.SendTo(ToBytes(documentName + documentPortSeparator + tcpListenPort), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
 
 			// wait for an answer
 			Console.WriteLine("Waiting for TCP connect");
@@ -154,7 +154,7 @@ namespace SyncEd.Network.Tcp
 						}
 						if (bytes != null && bytes.Length != 0)
 						{
-							var parts = toString(bytes).Split(documentPortSeparator);
+							var parts = ToString(bytes).Split(documentPortSeparator);
 							Debug.Assert(parts.Length == 2);
 							string peerDocumentName = parts[0];
 							int remoteTcpListenPort = int.Parse(parts[1]);

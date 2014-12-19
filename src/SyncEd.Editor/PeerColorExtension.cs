@@ -13,8 +13,8 @@ namespace SyncEd.Editor
 	{
 		public static Color Color(this Peer peer)
 		{
-			int address = peer.Address.Address.GetHashCode();
-			short port = (short)peer.Address.Port;
+			int address = peer.EndPoint.Address.GetHashCode();
+			short port = (short)peer.EndPoint.Port;
 
 			short a = (short)((short)address +(short)(address >> 16));
 			byte a1 = (byte)(a >> 8);

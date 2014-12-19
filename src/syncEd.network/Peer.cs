@@ -12,24 +12,24 @@ namespace SyncEd.Network
 		/// Uniquly identifies the peer on the network by specifying his address and the port of his TCP listener (unique on the same machine)
 		/// </summary>
 		[DataMember]
-		public IPEndPoint Address { get; set; }
+		public IPEndPoint EndPoint { get; set; }
 
 		public override bool Equals(object obj)
 		{
 			if (obj is Peer)
-				return (obj as Peer).Address.Equals(Address);
+				return (obj as Peer).EndPoint.Equals(EndPoint);
 			else
 				return false;
 		}
 
 		public override int GetHashCode()
 		{
-			return Address.GetHashCode();
+			return EndPoint.GetHashCode();
 		}
 
 		public override string ToString()
 		{
-			return "Peer {" + Address.ToString() + "}";
+			return "Peer {" + EndPoint.ToString() + "}";
 		}
 	}
 }

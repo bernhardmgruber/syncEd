@@ -60,7 +60,7 @@ namespace SyncEd.Network.Tcp
 		}
 		private void OwnIPDetected(IPEndPoint address)
 		{
-			Self = new Peer() { Address = address };
+			Self = new Peer() { EndPoint = address };
 			Console.WriteLine("Own IP determined as " + address);
 			selfSetWaithandle.Set();
 		}
@@ -126,13 +126,20 @@ namespace SyncEd.Network.Tcp
 		private void ObjectReveived(TcpLink link, object o)
 		{
 			var po = o as PeerObject;
-			Console.WriteLine("TcpLinkControl: Incoming (" + po.Peer.Address + "): " + po.Object);
+			Console.WriteLine("TcpLinkControl: Incoming (" + po.Peer.EndPoint + "): " + po.Object);
 
 			// forward
 			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
 				BroadcastBytes(Serialize(po), link);
 
-			PacketArrived(po.Object, po.Peer, p => SendPacket(p, link));
+			FirePacketArrived(po.Object, po.Peer, p => SendPacket(p, link));
+		}
+
+		private void FirePacketArrived(object packet, Peer peer, SendBackFunc sendBack)
+		{
+			var handler = PacketArrived;
+			if (handler != null)
+				handler(packet, peer, sendBack);
 		}
 
 		private void Panic(TcpLink deadLink)
