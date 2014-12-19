@@ -1,0 +1,51 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="$(SolutionDir)SyncEd.Network\\bin\\$(Configuration)\\SyncEd.Network.dll" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="SyncEd.Network.Packets" #>
+<#@ output extension=".cs" #>
+<#
+	var assembly = typeof(AddTextPacket).Assembly;
+	var packetTypes = assembly.GetTypes().Where(t => t.Namespace == "SyncEd.Network.Packets").ToList();
+#>
+using System;
+using SyncEd.Network;
+using SyncEd.Network.Packets;
+
+namespace SyncEd.Document
+{
+	public class PacketDispatcher
+	{
+<# foreach(var type in packetTypes) { var name = type.Name; #>
+		public event Action<<#= name #>, Peer, SendBackFunc> <#= name #>Arrived;
+<# } #>
+
+		public PacketDispatcher(INetwork network)
+		{
+			network.PacketArrived += DispatchPacket;
+		}
+
+		bool TryFire<P>(object packet, Peer peer, SendBackFunc sendBack, Action<P, Peer, SendBackFunc> handler)
+		{
+			if (packet is P && handler != null)
+			{
+				handler((P)packet, peer, sendBack);
+				return true;
+			}
+			else
+				return false;
+		}
+
+		void DispatchPacket(object packet, Peer peer, SendBackFunc sendBack)
+		{
+			// dispatch to UI
+			if (false) { }
+<# foreach(var type in packetTypes) { var name = type.Name; #>
+			else if (TryFire(packet, peer, sendBack, <#= name #>Arrived)) {}
+<# } #>
+			else Console.WriteLine("Unrecognized packet of type: " + packet.GetType().AssemblyQualifiedName);
+		}
+	}
+}

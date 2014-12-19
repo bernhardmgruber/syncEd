@@ -38,6 +38,11 @@
     <Compile Include="DocumentTextChangedEventArgs.cs" />
     <Compile Include="IDocument.cs" />
     <Compile Include="NetworkDocument.cs" />
+    <Compile Include="PacketDispatcher.cs">
+      <DependentUpon>PacketDispatcher.tt</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
     <Compile Include="PeerCountChangedEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -46,6 +51,15 @@
       <Project>{dd7c6445-8c14-4143-9281-3680080d02af}</Project>
       <Name>SyncEd.Network</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="PacketDispatcher.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>PacketDispatcher.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
