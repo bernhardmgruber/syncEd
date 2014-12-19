@@ -18,8 +18,6 @@ namespace SyncEd.Network.Tcp
 		public event ObjectReceivedHandler ObjectReceived;
 		public event FailedHandler Failed;
 
-		internal IPAddress Address { get; private set; }
-
 		private TcpClient tcp;
 		private NetworkStream stream;
 		private Thread recvThread;
@@ -29,7 +27,6 @@ namespace SyncEd.Network.Tcp
 		{
 			this.tcp = tcp;
 			stream = tcp.GetStream();
-			Address = (tcp.Client.RemoteEndPoint as IPEndPoint).Address;
 		}
 
 		public void Start()
@@ -92,7 +89,7 @@ namespace SyncEd.Network.Tcp
 
 		public override string ToString()
 		{
-			return "TcpLink {" + Address + "}";
+			return "TcpLink {" + (tcp.Client.RemoteEndPoint as IPEndPoint) + "}";
 		}
 	}
 }

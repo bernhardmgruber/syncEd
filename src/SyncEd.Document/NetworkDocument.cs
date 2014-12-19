@@ -65,7 +65,7 @@ namespace SyncEd.Document
                 network.Stop();
         }
 
-        private void network_AddTextPacketArrived(AddTextPacket packet, Peer peer)
+        private void network_AddTextPacketArrived(AddTextPacket packet, Peer peer, SendBackFunc sendBack)
         {
             lock (documentText) {
                 documentText.Insert(packet.Offset, packet.Text);
@@ -73,7 +73,7 @@ namespace SyncEd.Document
             FireTextChanged();
         }
 
-        private void network_DeleteTextPacketArrived(DeleteTextPacket packet, Peer peer)
+        private void network_DeleteTextPacketArrived(DeleteTextPacket packet, Peer peer, SendBackFunc sendBack)
         {
             lock (documentText) {
                 documentText.Remove(packet.Offset, packet.Length);
@@ -81,17 +81,17 @@ namespace SyncEd.Document
             FireTextChanged();
         }
 
-        private void network_QueryDocumentPacketArrived(QueryDocumentPacket packet, Peer peer)
+        private void network_QueryDocumentPacketArrived(QueryDocumentPacket packet, Peer peer, SendBackFunc sendBack)
         {
-            network.SendPacket(new DocumentPacket() { Document = documentText.ToString() }, peer);
+            sendBack(new DocumentPacket() { Document = documentText.ToString() });
         }
 
-        private void dispatcher_QueryPeerCountPacketArrived(QueryPeerCountPacket packet, Peer peer)
+        private void dispatcher_QueryPeerCountPacketArrived(QueryPeerCountPacket packet, Peer peer, SendBackFunc sendBack)
         {
-            network.SendPacket(new PeerCountPacket() { Count = peerCount }, peer);
+            sendBack(new PeerCountPacket() { Count = peerCount });
         }
 
-        private void network_DocumentPacketArrived(DocumentPacket packet, Peer peer)
+        private void network_DocumentPacketArrived(DocumentPacket packet, Peer peer, SendBackFunc sendBack)
         {
             lock (documentText) {
                 documentText.Clear();
@@ -100,24 +100,24 @@ namespace SyncEd.Document
             FireTextChanged();
         }
 
-        private void dispatcher_PeerCountPacketArrived(PeerCountPacket packet, Peer peer)
+        private void dispatcher_PeerCountPacketArrived(PeerCountPacket packet, Peer peer, SendBackFunc sendBack)
         {
             peerCount = packet.Count;
             FirePeerCountChanged();
         }
 
-        private void network_UpdateCaretPackageArrived(UpdateCaretPacket packet, Peer peer)
+        private void network_UpdateCaretPackageArrived(UpdateCaretPacket packet, Peer peer, SendBackFunc sendBack)
         {
             FireCaretPositionChanged(peer, packet.Position);
         }
 
-        void dispatcher_NewPeerPacketArrived(NewPeerPacket packet, Peer peer)
+        void dispatcher_NewPeerPacketArrived(NewPeerPacket packet, Peer peer, SendBackFunc sendBack)
         {
             peerCount++;
             FirePeerCountChanged();
         }
 
-        void dispatcher_LostPeerPacketArrived(LostPeerPacket packet, Peer peer)
+        void dispatcher_LostPeerPacketArrived(LostPeerPacket packet, Peer peer, SendBackFunc sendBack)
         {
             peerCount--;
             FirePeerCountChanged();

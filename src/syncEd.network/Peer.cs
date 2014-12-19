@@ -8,8 +8,11 @@ namespace SyncEd.Network
 	[DataContract]
 	public class Peer
 	{
+		/// <summary>
+		/// Uniquly identifies the peer on the network by specifying his address and the port of his TCP listener (unique on the same machine)
+		/// </summary>
 		[DataMember]
-		public IPAddress Address { get; set; }
+		public IPEndPoint Address { get; set; }
 
 		public override bool Equals(object obj)
 		{

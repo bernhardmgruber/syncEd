@@ -10,7 +10,7 @@ using System.Diagnostics;
 namespace SyncEd.Network.Tcp
 {
 	public delegate void NewLinkHandler(TcpLink p);
-	public delegate void OwnIPDetectedHandler(IPAddress a);
+	public delegate void OwnIPDetectedHandler(IPEndPoint a);
 
 	// @see: http://msdn.microsoft.com/en-us/library/tst0kwb1(v=vs.110).aspx
 	internal class TcpLinkEstablisher
@@ -90,7 +90,7 @@ namespace SyncEd.Network.Tcp
 				handler(tcp);
 		}
 
-		private void FireOwnIPDetected(IPAddress address)
+		private void FireOwnIPDetected(IPEndPoint address)
 		{
 			var handler = OwnIPDetected;
 			if (handler != null)
@@ -163,7 +163,7 @@ namespace SyncEd.Network.Tcp
 							if (IsLocalAddress(ep.Address) && remoteTcpListenPort == tcpListenPort)
 							{
 								Console.WriteLine("Self broadcast detected");
-								FireOwnIPDetected(ep.Address);
+								FireOwnIPDetected(new IPEndPoint(ep.Address, remoteTcpListenPort));
 							}
 							else if (peerDocumentName != documentName)
 								Console.WriteLine("Mismatch in document name");

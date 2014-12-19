@@ -58,7 +58,7 @@ namespace SyncEd.Network.Tcp
 				links.ForEach(p => p.Close());
 			links = new List<TcpLink>();
 		}
-		private void OwnIPDetected(IPAddress address)
+		private void OwnIPDetected(IPEndPoint address)
 		{
 			Self = new Peer() { Address = address };
 			Console.WriteLine("Own IP determined as " + address);
@@ -99,33 +99,20 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		public void SendPacket(object packet, Peer peer = null)
+		public void SendPacket(object packet)
 		{
 			Debug.Assert(Self != null, "Own IP has not been determined for send");
 
 			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
-			if (peer == null)
-			{
-				Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
-				BroadcastBytes(data);
-			}
-			else
-			{
-				Console.WriteLine("TcpLinkControl: Outgoing (" + peer.Address + "): " + packet);
-				SendBytes(data, peer);
-			}
+			Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
+			BroadcastBytes(data);
 		}
 
-		private void SendBytes(byte[] bytes, Peer peer)
+		private void SendPacket(object packet, TcpLink link)
 		{
-			lock (links)
-			{
-				var link = links.Find(tcpPeer => tcpPeer.Address.Equals(peer.Address));
-				if (link == null)
-					Console.WriteLine("Warning: Sending packages to peers which are not directly connected is not supported. Dropping package");
-				else
-					link.Send(bytes);
-			}
+			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
+			Console.WriteLine("TcpLinkControl: Outgoing (" + link + "): " + packet);
+			link.Send(data);
 		}
 
 		private void BroadcastBytes(byte[] bytes, TcpLink exclude = null)
@@ -145,7 +132,7 @@ namespace SyncEd.Network.Tcp
 			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
 				BroadcastBytes(Serialize(po), link);
 
-			PacketArrived(po.Object, po.Peer);
+			PacketArrived(po.Object, po.Peer, p => SendPacket(p, link));
 		}
 
 		private void Panic(TcpLink deadLink)

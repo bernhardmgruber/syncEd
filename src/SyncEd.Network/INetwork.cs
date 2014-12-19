@@ -2,7 +2,8 @@
 
 namespace SyncEd.Network
 {
-	public delegate void PacketHandler(object packet, Peer peer);
+	public delegate void SendBackFunc(object packet);
+	public delegate void PacketHandler(object packet, Peer peer, SendBackFunc sendBack);
 
 	public interface INetwork
 	{
@@ -22,10 +23,9 @@ namespace SyncEd.Network
 		void Stop();
 
 		/// <summary>
-		/// Sends a packet into the network
+		/// Broadcasts a packet into the network
 		/// </summary>
 		/// <param name="packet">Packet to send, can be any object</param>
-		/// <param name="peer">Optional. Receiver of the packet. If null is specified, the packet is broadcasted</param>
-		void SendPacket(object packet, Peer peer = null);
+		void SendPacket(object packet);
 	}
 }
