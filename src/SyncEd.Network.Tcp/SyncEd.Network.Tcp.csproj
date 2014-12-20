@@ -37,7 +37,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TcpNetwork.cs" />
-    <Compile Include="TcpLinkEstablisher.cs" />
     <Compile Include="TcpLink.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
