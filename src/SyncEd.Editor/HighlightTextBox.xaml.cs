@@ -25,10 +25,6 @@ namespace SyncEd.Editor
             set { SetValue(HighlightRangesProperty, value); }
         }
 
-        public static DependencyProperty HighlightColorProperty = DependencyProperty.Register("HighlightColor", typeof(Brush), typeof(HighlightTextBox),
-            new FrameworkPropertyMetadata(Brushes.Red, FrameworkPropertyMetadataOptions.AffectsRender));
-
-
         public HighlightTextBox()
         {
             InitializeComponent();
@@ -78,31 +74,6 @@ namespace SyncEd.Editor
 
             drawingContext.DrawText(formattedText, new Point(leftMargin, topMargin - VerticalOffset));
         }
-
-        /*protected override void OnTextChanged(TextChangedEventArgs e)
-        {
-            if (setOldText)
-                return;
-
-            var forbiddenChanges =
-                from change in e.Changes
-                let start = change.Offset
-                let end = start + Math.Max(change.AddedLength, change.AddedLength)
-                where start != 0 && start != oldText.Length // allow input at they start and end of text
-                where HighlightRanges.Any(hr => start <= hr.Item2 && end >= hr.Item1)
-                select change;
-
-            //var filteredArgs = new TextChangedEventArgs(e.RoutedEvent, e.UndoAction, e.Changes.Except(forbiddenChanges).ToList());
-
-            if (forbiddenChanges.Any()) {
-                setOldText = true;
-                Text = oldText;
-                setOldText = false;
-            } else {
-                oldText = Text;
-                base.OnTextChanged(e);
-            }
-        }*/
 
         // from: http://www.codeproject.com/Articles/33939/CodeBox
         private bool scrollingEventEnabled = false;
