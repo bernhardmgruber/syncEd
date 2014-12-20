@@ -7,7 +7,7 @@ namespace SyncEd.Editor
     {
         public static Color Color(this Peer peer)
         {
-            double h = (double)(peer.Address.GetHashCode() * peer.Address.Port.GetHashCode()) / int.MaxValue;
+            double h = (double)(peer.EndPoint.Address.GetHashCode() * peer.EndPoint.Port.GetHashCode()) / int.MaxValue;
             return HslToRgb(h, 1.0, 0.5);
 
             /*int address = peer.Address.Address.GetHashCode();
