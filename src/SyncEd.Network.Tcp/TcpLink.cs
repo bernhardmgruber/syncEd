@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace SyncEd.Network.Tcp
 {
 	public delegate void ObjectReceivedHandler(TcpLink sender, object o);
-	public delegate void FailedHandler(TcpLink sender);
+	public delegate void FailedHandler(TcpLink sender, byte[] failedData);
 
 	public class TcpLink
 	{
@@ -58,11 +58,11 @@ namespace SyncEd.Network.Tcp
 			handler(this, o);
 		}
 
-		private void FireFailed()
+		private void FireFailed(byte[] failedData = null)
 		{
 			var handler = Failed;
 			Debug.Assert(handler != null, "FATAL: No fail handler on TCP Peer " + this);
-			Task.Run(() => handler(this)); // when failing, the fail handler have to run on another thread than the threads used by this TcpLink as these threads have to be shut down
+			Task.Run(() => handler(this, failedData)); // when failing, the fail handler have to run on another thread than the threads used by this TcpLink as these threads have to be shut down
 		}
 
 		public void Send(byte[] bytes)
@@ -74,7 +74,7 @@ namespace SyncEd.Network.Tcp
 			catch (Exception e)
 			{
 				Console.WriteLine("Send in " + this + " failed: " + e);
-				FireFailed();
+				FireFailed(bytes);
 			}
 		}
 
