@@ -48,7 +48,8 @@ namespace SyncEd.Network.Tcp
 		public event PacketHandler PacketArrived;
 
 		private List<TcpLink> links;
-		private ManualResetEvent selfSetWaithandle;
+		private ManualResetEvent ownIPWaitHandle;
+		private ManualResetEvent repairModeWaitHandle;
 		private string documentName;
 
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
@@ -72,12 +73,12 @@ namespace SyncEd.Network.Tcp
 		public bool Start(string documentName)
 		{
 			this.documentName = documentName;
-			selfSetWaithandle = new ManualResetEvent(false);
+			ownIPWaitHandle = new ManualResetEvent(false);
+			repairModeWaitHandle = new ManualResetEvent(true);
 			links = new List<TcpLink>();
 			StartListeningForPeers();
 			bool found = FindPeer();
-			selfSetWaithandle.WaitOne(); // wait for listener thread to receive self broadcast and determine own IP
-			selfSetWaithandle.Dispose();
+			ownIPWaitHandle.WaitOne(); // wait for listener thread to receive self broadcast and determine own IP
 			return found;
 		}
 
@@ -89,6 +90,8 @@ namespace SyncEd.Network.Tcp
 			lock (links)
 				links.ForEach(p => p.Close());
 			links = new List<TcpLink>();
+			ownIPWaitHandle.Dispose();
+			repairModeWaitHandle.Dispose();
 		}
 
 		public void SendPacket(object packet)
@@ -123,6 +126,13 @@ namespace SyncEd.Network.Tcp
 				return formatter.Deserialize(ms);
 		}
 
+		private void OwnIPDetected(IPEndPoint address)
+		{
+			Self = new Peer() { EndPoint = address };
+			Console.WriteLine("Own IP determined as " + address);
+			ownIPWaitHandle.Set();
+		}
+
 		private void NewLinkEstablished(TcpLink p)
 		{
 			lock (links)
@@ -141,11 +151,14 @@ namespace SyncEd.Network.Tcp
 
 			Console.WriteLine("PANIC - " + link + " is dead");
 
+			repairModeWaitHandle.Reset(); // start repair mode
+
 			// inform peers that a link died
 			var bytes = Serialize(new PeerDiedPacket() { DocumentName = documentName, Peer = link.Peer });
 			udp.Send(bytes, bytes.Length);
 
 			// TODO
+
 			// wait until repair is complete
 
 			// resend failedData to all new links
@@ -253,13 +266,6 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		private void OwnIPDetected(IPEndPoint address)
-		{
-			Self = new Peer() { EndPoint = address };
-			Console.WriteLine("Own IP determined as " + address);
-			selfSetWaithandle.Set();
-		}
-
 		/// <summary>
 		/// Listens on the network for new peers with the given document name.
 		/// If such a peer connects, the NewLinkEstablished event is fired.
@@ -332,7 +338,21 @@ namespace SyncEd.Network.Tcp
 								{
 									var p = packet as PeerDiedPacket;
 
-									// check all links if they are affected
+									Console.WriteLine("Received panic packet");
+
+									// check all links if they are affected and kill affected ones
+									bool foundDead = false;
+									lock (links)
+									{
+										var failedPeer = links.Where(l => l.Peer.Equals(p.Peer)).FirstOrDefault();
+										if (failedPeer != null)
+										{
+											foundDead = true;
+											failedPeer.Close();
+											repairModeWaitHandle.Reset(); // start panic mode
+										}
+									}
+
 
 								}
 							}
