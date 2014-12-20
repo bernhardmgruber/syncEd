@@ -29,12 +29,17 @@ namespace SyncEd.Editor
             DataContext.Close();
         }
 
-		private void SelectionChanged(object sender, RoutedEventArgs e)
-		{
-			if(DataContext != null) {
-				TextBox box = sender as TextBox;
-				DataContext.ChangeCaretPos(box.CaretIndex);
-			}
-		}
+        private void SelectionChanged(object sender, RoutedEventArgs e)
+        {
+            if (DataContext != null) {
+                TextBox box = sender as TextBox;
+                DataContext.ChangeCaretPos(box.CaretIndex);
+            }
+        }
+
+        private void TextBoxLostFocus(object sender, RoutedEventArgs e)
+        {
+            DataContext.ChangeCaretPos(null);
+        }
     }
 }

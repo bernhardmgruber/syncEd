@@ -27,8 +27,10 @@
             <editor:HighlightTextBox
                 Text="{Binding DocumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 IsEnabled="{Binding IsConnected, Mode=OneWay}"
+                IsReadOnly="{Binding IsInForbiddenTextRange, Mode=OneWay}"
                 HighlightRanges="{Binding HighlightedRanges}"
                 SelectionChanged="SelectionChanged"
+                LostFocus="TextBoxLostFocus"
                 TextChanged="TextChanged"
                 AcceptsReturn="True"
                 AcceptsTab="True"

@@ -47,10 +47,9 @@ namespace SyncEd.Document
                 throw new NotSupportedException("Cannot connect when document is already connected.");
 
             bool foundPeer = network.Start(documentName);
-            if (foundPeer)
-            {
+            if (foundPeer) {
                 network.SendPacket(new NewPeerPacket()); // neighbors add me to their count
-                network.SendPacket(new QueryDocumentPacket()); 
+                network.SendPacket(new QueryDocumentPacket());
                 network.SendPacket(new QueryPeerCountPacket()); // ask neighbor for his count
             }
 
@@ -126,22 +125,19 @@ namespace SyncEd.Document
         // is called when the text is changed by the UI
         public void ChangeText(int offset, int length, string text)
         {
-            lock (documentText)
-            {
-                if (length > 0)
-                {
+            lock (documentText) {
+                if (length > 0) {
                     documentText.Remove(offset, length);
                     network.SendPacket(new DeleteTextPacket() { Offset = offset, Length = length });
                 }
-                if (text.Length > 0)
-                {
+                if (text.Length > 0) {
                     documentText.Insert(offset, text);
                     network.SendPacket(new AddTextPacket() { Offset = offset, Text = text });
                 }
             }
         }
 
-        public void ChangeCaretPos(int pos)
+        public void ChangeCaretPos(int? pos)
         {
             network.SendPacket(new UpdateCaretPacket() { Position = pos });
         }

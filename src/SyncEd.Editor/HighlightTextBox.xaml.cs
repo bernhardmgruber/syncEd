@@ -1,20 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace SyncEd.Editor
 {
@@ -34,10 +25,6 @@ namespace SyncEd.Editor
             set { SetValue(HighlightRangesProperty, value); }
         }
 
-        public static DependencyProperty HighlightColorProperty = DependencyProperty.Register("HighlightColor", typeof(Brush), typeof(HighlightTextBox),
-            new FrameworkPropertyMetadata(Brushes.Red, FrameworkPropertyMetadataOptions.AffectsRender));
-
-
         public HighlightTextBox()
         {
             InitializeComponent();
@@ -50,8 +37,7 @@ namespace SyncEd.Editor
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            if (string.IsNullOrEmpty(Text))
-            {
+            if (string.IsNullOrEmpty(Text)) {
                 base.OnRender(drawingContext);
                 return;
             }
@@ -65,12 +51,11 @@ namespace SyncEd.Editor
             drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, this.ActualWidth, this.ActualHeight)));
 
             // prepare text
-            var formattedText = new FormattedText(Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Source), FontSize, new SolidColorBrush(Colors.Black))
-                                                    {
-                                                        Trimming = TextTrimming.None,
-                                                        MaxTextWidth = ViewportWidth,
-                                                        MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
-                                                    };
+            var formattedText = new FormattedText(Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Source), FontSize, new SolidColorBrush(Colors.Black)) {
+                Trimming = TextTrimming.None,
+                MaxTextWidth = ViewportWidth,
+                MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
+            };
 
             foreach (var range in HighlightRanges) {
                 var l = formattedText.Text.Length;
@@ -94,8 +79,7 @@ namespace SyncEd.Editor
         private bool scrollingEventEnabled = false;
         private void EnsureScrolling()
         {
-            if (!scrollingEventEnabled)
-            {
+            if (!scrollingEventEnabled) {
                 DependencyObject dp = VisualTreeHelper.GetChild(this, 0);
                 ScrollViewer sv = VisualTreeHelper.GetChild(dp, 0) as ScrollViewer;
                 sv.ScrollChanged += (s, e) => InvalidateVisual();
