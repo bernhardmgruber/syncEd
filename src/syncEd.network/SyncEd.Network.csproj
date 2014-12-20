@@ -36,7 +36,7 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BroadcastAttribute.cs" />
+    <Compile Include="AutoForwardAttribute.cs" />
     <Compile Include="Packets\LostPeerPacket.cs" />
     <Compile Include="Packets\NewPeerPacket.cs" />
     <Compile Include="Packets\PeerCountPacket.cs" />
