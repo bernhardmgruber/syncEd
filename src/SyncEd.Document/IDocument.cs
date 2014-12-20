@@ -14,6 +14,6 @@ namespace SyncEd.Document
         void Close();
 
         void ChangeText(int offset, int length, string text);
-        void ChangeCaretPos(int pos);
+        void ChangeCaretPos(int? pos);
     }
 }

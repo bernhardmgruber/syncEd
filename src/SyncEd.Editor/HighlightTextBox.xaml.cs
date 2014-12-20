@@ -1,20 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace SyncEd.Editor
 {
@@ -50,8 +41,7 @@ namespace SyncEd.Editor
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            if (string.IsNullOrEmpty(Text))
-            {
+            if (string.IsNullOrEmpty(Text)) {
                 base.OnRender(drawingContext);
                 return;
             }
@@ -65,12 +55,11 @@ namespace SyncEd.Editor
             drawingContext.PushClip(new RectangleGeometry(new Rect(0, 0, this.ActualWidth, this.ActualHeight)));
 
             // prepare text
-            var formattedText = new FormattedText(Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Source), FontSize, new SolidColorBrush(Colors.Black))
-                                                    {
-                                                        Trimming = TextTrimming.None,
-                                                        MaxTextWidth = ViewportWidth,
-                                                        MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
-                                                    };
+            var formattedText = new FormattedText(Text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Source), FontSize, new SolidColorBrush(Colors.Black)) {
+                Trimming = TextTrimming.None,
+                MaxTextWidth = ViewportWidth,
+                MaxTextHeight = Math.Max(ActualHeight + VerticalOffset, 0)
+            };
 
             foreach (var range in HighlightRanges) {
                 var l = formattedText.Text.Length;
@@ -90,12 +79,36 @@ namespace SyncEd.Editor
             drawingContext.DrawText(formattedText, new Point(leftMargin, topMargin - VerticalOffset));
         }
 
+        /*protected override void OnTextChanged(TextChangedEventArgs e)
+        {
+            if (setOldText)
+                return;
+
+            var forbiddenChanges =
+                from change in e.Changes
+                let start = change.Offset
+                let end = start + Math.Max(change.AddedLength, change.AddedLength)
+                where start != 0 && start != oldText.Length // allow input at they start and end of text
+                where HighlightRanges.Any(hr => start <= hr.Item2 && end >= hr.Item1)
+                select change;
+
+            //var filteredArgs = new TextChangedEventArgs(e.RoutedEvent, e.UndoAction, e.Changes.Except(forbiddenChanges).ToList());
+
+            if (forbiddenChanges.Any()) {
+                setOldText = true;
+                Text = oldText;
+                setOldText = false;
+            } else {
+                oldText = Text;
+                base.OnTextChanged(e);
+            }
+        }*/
+
         // from: http://www.codeproject.com/Articles/33939/CodeBox
         private bool scrollingEventEnabled = false;
         private void EnsureScrolling()
         {
-            if (!scrollingEventEnabled)
-            {
+            if (!scrollingEventEnabled) {
                 DependencyObject dp = VisualTreeHelper.GetChild(this, 0);
                 ScrollViewer sv = VisualTreeHelper.GetChild(dp, 0) as ScrollViewer;
                 sv.ScrollChanged += (s, e) => InvalidateVisual();
