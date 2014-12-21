@@ -13,26 +13,30 @@ namespace SyncEd.Network.Tcp
 	internal delegate void ObjectReceivedHandler(TcpLink sender, object o);
 	internal delegate void FailedHandler(TcpLink sender, byte[] failedData);
 
-	public class TcpLink
+	public class TcpLink : IDisposable
 	{
-		internal event ObjectReceivedHandler ObjectReceived;
-		internal event FailedHandler Failed;
-
 		internal Peer Peer { get; private set; }
 
 		private TcpClient tcp;
 		private NetworkStream stream;
 		private Thread recvThread;
-		private volatile bool closed = false;
+		private volatile bool disposed = false;
 
-		internal TcpLink(TcpClient tcp, Peer peer)
+		private ObjectReceivedHandler objectReceived;
+		private FailedHandler failed;
+
+		internal TcpLink(TcpClient tcp, Peer peer, ObjectReceivedHandler objectReceived, FailedHandler failed)
 		{
 			this.tcp = tcp;
 			this.Peer = peer;
+			this.objectReceived = objectReceived;
+			this.failed = failed;
 			stream = tcp.GetStream();
+
+			Start();
 		}
 
-		internal void Start()
+		private void Start()
 		{
 			recvThread = new Thread(() =>
 			{
@@ -53,40 +57,35 @@ namespace SyncEd.Network.Tcp
 
 		private void FireObjectReceived(object o)
 		{
-			var handler = ObjectReceived;
-			Debug.Assert(handler != null, "FATAL: No packet handler on TCP Peer " + this + ". Packet lost.");
-			handler(this, o);
+			objectReceived(this, o);
 		}
 
 		private void FireFailed(byte[] failedData = null)
 		{
-			var handler = Failed;
-			Debug.Assert(handler != null, "FATAL: No fail handler on TCP Peer " + this);
-			handler(this, failedData);
+			failed(this, failedData);
 		}
 
 		internal void Send(byte[] bytes)
 		{
-			if (closed)
+			if (disposed)
 				throw new ObjectDisposedException("TcpLink has already been closed");
 
 			try
 			{
 				stream.WriteAsync(bytes, 0, bytes.Length);
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
-				Console.WriteLine("Send in " + this + " failed: " + e);
 				FireFailed(bytes);
 			}
 		}
 
-		internal void Close()
+		public void Dispose()
 		{
-			if (!closed)
+			if (!disposed)
 			{
 				Console.WriteLine("Closing Link " + this);
-				closed = true;
+				disposed = true;
 				stream.Dispose(); // closes socket and causes receiver thread to FireFailed() if it is still running
 				recvThread.Join();
 				tcp.Close();
@@ -95,7 +94,10 @@ namespace SyncEd.Network.Tcp
 
 		public override string ToString()
 		{
-			return "TcpLink {" + (tcp.Client.RemoteEndPoint as IPEndPoint) + "}";
+			if (disposed)
+				return "TcpLink {disposed}";
+			else
+				return "TcpLink {" + (tcp.Client.RemoteEndPoint as IPEndPoint) + "}";
 		}
 	}
 }

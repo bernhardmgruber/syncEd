@@ -103,7 +103,7 @@ namespace SyncEd.Network.Tcp
 			udp.Close();
 			udpListenThread.Join();
 			lock (links)
-				links.ForEach(p => p.Close());
+				links.ForEach(p => p.Dispose());
 			links = new List<TcpLink>();
 			ownIPWaitHandle.Dispose();
 			repairModeWaitHandle.Dispose();
@@ -146,19 +146,15 @@ namespace SyncEd.Network.Tcp
 			ownIPWaitHandle.Set();
 		}
 
-		private void NewLinkEstablished(TcpLink p)
+		private void NewLinkEstablished(TcpClient tcp, Peer peer)
 		{
 			lock (links)
-				links.Add(p);
-			p.ObjectReceived += ObjectReveived;
-			p.Failed += PeerFailed;
-			p.Start();
+				links.Add(new TcpLink(tcp, peer, ObjectReveived, PeerFailed));
 		}
 
 		private void PeerFailed(TcpLink link, byte[] failedData)
 		{
 			Console.WriteLine("PANIC - " + link + " is dead");
-
 			FoundDeadLink(link, Self);
 
 			// inform peers that a link died
@@ -166,9 +162,9 @@ namespace SyncEd.Network.Tcp
 			udp.Send(bytes, bytes.Length);
 		}
 
-		private void BroadcastObject(PeerObject po, TcpLink exclude = null)
+		private void BroadcastObject(PeerObject po, TcpLink exclude = null, bool overrideRepair = false)
 		{
-			if (InRepairMode)
+			if (!overrideRepair && InRepairMode)
 			{
 				Console.WriteLine("Buffered: " + po.Object);
 				repairModeOutgoingTcpPacketBuffer.Add(Tuple.Create(po, exclude));
@@ -234,7 +230,7 @@ namespace SyncEd.Network.Tcp
 				var peerEp = new IPEndPoint(address, remotePort);
 				Console.WriteLine("TCP connect from " + peerEp);
 				Console.WriteLine("Connection established");
-				NewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEp }));
+				NewLinkEstablished(tcp, new Peer() { EndPoint = peerEp });
 				return true;
 			}
 			else
@@ -274,7 +270,6 @@ namespace SyncEd.Network.Tcp
 
 		/// <summary>
 		/// Listens on the network for new peers with the given document name.
-		/// If such a peer connects, the NewLinkEstablished event is fired.
 		/// </summary>
 		/// <param name="documentName"></param>
 		private void StartListeningForPeers()
@@ -337,7 +332,7 @@ namespace SyncEd.Network.Tcp
 			}
 
 			Console.WriteLine("Connection established");
-			NewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEP }));
+			NewLinkEstablished(tcp, new Peer() { EndPoint = peerEP });
 		}
 
 		private void ProcessUdpPacket(UdpPacket packet, IPEndPoint endpoint)
@@ -372,19 +367,22 @@ namespace SyncEd.Network.Tcp
 			else
 			{
 				// check all links if they are affected and kill affected ones
+				TcpLink deadLink = null;
 				lock (links)
-				{
-					var deadLink = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
-					if (deadLink != null)
-						FoundDeadLink(deadLink, p.RepairPeer);
-				}
+					deadLink = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
+				if (deadLink != null)
+					FoundDeadLink(deadLink, p.RepairPeer);
 			}
 		}
 
 		private void FoundDeadLink(TcpLink deadLink, Peer repairPeer)
 		{
-			deadLink.Close();
-			repairModeWaitHandle.Reset(); // start repair mode
+			lock(links)
+				links.Remove(deadLink);
+			deadLink.Dispose();
+
+			Console.WriteLine("Preparing repair mode");
+			repairModeWaitHandle.Reset(); // prepare repair mode
 			repairMasterPeers.Add(repairPeer);
 			repairDeadPeer = deadLink.Peer;
 			InitiateRepair();
@@ -397,25 +395,32 @@ namespace SyncEd.Network.Tcp
 			{
 				// if we are not the master node, connect to it
 				Peer masterNode = repairMasterPeers.First();
+
+				Console.WriteLine("Repair started. Master: " + (masterNode == Self));
+
 				if (masterNode != Self)
 					EstablishConnectionTo(masterNode.EndPoint);
 				else
 					Thread.Sleep(repairReestablishWaitMs);
 
-				// disable repair mode
-				repairModeWaitHandle.Set();
+				// flush all packets buffered during repair
+				Console.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
+				foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
+					BroadcastObject(poAndExclude.Item1, poAndExclude.Item2, true);
+				repairModeOutgoingTcpPacketBuffer.Clear();
+
+				// notify the network
+				Console.WriteLine("Send peer lost notification");
+				if (masterNode == Self)
+					BroadcastObject(new PeerObject() { Peer = Self, Object = new LostPeerPacket() { } }, null, true);
 
 				repairDeadPeer = null;
 				repairMasterPeers = new SortedSet<Peer>();
 
-				// flush all packets buffered during repair
-				foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
-					BroadcastObject(poAndExclude.Item1, poAndExclude.Item2);
-				repairModeOutgoingTcpPacketBuffer.Clear();
+				// disable repair mode
+				repairModeWaitHandle.Set();
 
-				// notify the network
-				if (masterNode == Self)
-					BroadcastObject(new PeerObject() { Peer = Self, Object = new LostPeerPacket() { } });
+				Console.WriteLine("Repair finished");
 			});
 		}
 	}
