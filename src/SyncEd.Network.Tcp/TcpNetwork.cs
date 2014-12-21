@@ -170,7 +170,7 @@ namespace SyncEd.Network.Tcp
 			}
 			else
 			{
-				Console.WriteLine("Out (" + links.Count + "): " + po.Object);
+				Console.WriteLine("Out (" + links.Count + "): " + po.Object.GetType().Name);
 				byte[] data = Serialize(po);
 				lock (links)
 					foreach (TcpLink l in links)
@@ -182,7 +182,7 @@ namespace SyncEd.Network.Tcp
 		private void ObjectReveived(TcpLink link, object o)
 		{
 			var po = o as PeerObject;
-			Console.WriteLine("In (" + po.Peer.EndPoint + "): " + po.Object);
+			Console.WriteLine("In (" + po.Peer.EndPoint + "): " + po.Object.GetType().Name);
 
 			// forward
 			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
@@ -190,7 +190,7 @@ namespace SyncEd.Network.Tcp
 
 			FirePacketArrived(po.Object, po.Peer, p =>
 			{
-				Console.WriteLine("Out (" + link + "): " + p);
+				Console.WriteLine("Out (" + link + "): " + p.GetType().Name);
 				link.Send(Serialize(new PeerObject() { Peer = Self, Object = p }));
 			});
 		}
