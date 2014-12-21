@@ -56,7 +56,7 @@ namespace SyncEd.Network.Tcp
 		private SortedSet<Peer> repairMasterPeers;
 		private Peer repairDeadPeer;
 		private const int repairMasterNodeWaitMs = 200;
-		private const int repairReestablishWaitMs = 400;
+		private const int repairReestablishWaitMs = 1000;
 
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
 		private const int linkEstablishTimeoutMs = 1000;
@@ -91,6 +91,7 @@ namespace SyncEd.Network.Tcp
 			repairModeOutgoingTcpPacketBuffer = new List<Tuple<PeerObject, TcpLink>>();
 			repairMasterPeers = new SortedSet<Peer>();
 			links = new List<TcpLink>();
+
 			StartListeningForPeers();
 			bool found = FindPeer();
 			ownIPWaitHandle.WaitOne(); // wait for listener thread to receive self broadcast and determine own IP
@@ -99,7 +100,6 @@ namespace SyncEd.Network.Tcp
 
 		public void Stop()
 		{
-			tcpListener.Stop();
 			udp.Close();
 			udpListenThread.Join();
 			lock (links)
@@ -202,20 +202,9 @@ namespace SyncEd.Network.Tcp
 				handler(packet, peer, sendBack);
 		}
 
-		/// <summary>
-		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
-		/// </summary>
-		internal bool FindPeer()
+		internal bool WaitForTcpConnect()
 		{
-			Debug.Assert(!tcpListener.Pending());
 			var peerTask = tcpListener.AcceptTcpClientAsync();
-
-			// send a broadcast with the document name into the network
-			Console.WriteLine("Broadcasting for " + documentName);
-			udp.Client.SendTo(Serialize(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort }), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
-
-			// wait for an answer
-			//Console.WriteLine("Waiting for TCP connect");
 			if (peerTask.Wait(linkEstablishTimeoutMs))
 			{
 				var tcp = peerTask.Result;
@@ -239,6 +228,24 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
+		/// <summary>
+		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
+		/// </summary>
+		internal bool FindPeer()
+		{
+			tcpListener.Start(1);
+
+			// send a broadcast with the document name into the network
+			Console.WriteLine("Broadcasting for " + documentName);
+			udp.Client.SendTo(Serialize(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort }), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
+
+			// wait for an answer
+			//Console.WriteLine("Waiting for TCP connect");
+			var r = WaitForTcpConnect();
+			tcpListener.Stop();
+			return r;
+		}
+
 		private bool IsLocalAddress(IPAddress address)
 		{
 			return Dns.GetHostAddresses(Dns.GetHostName()).Any(a => a.Equals(address));
@@ -252,11 +259,10 @@ namespace SyncEd.Network.Tcp
 				try
 				{
 					var l = new TcpListener(IPAddress.Any, tcpListenPort);
-					l.Start(1); // only listen for 1 connection
-					Console.WriteLine("Started TCP listener on port " + tcpListenPort);
+					Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
 					return l;
 				}
-				catch (SocketException)
+				catch (Exception)
 				{
 					//Console.WriteLine("Failed to establish TCP listener on port " + tcpListenPort + ": " + e);
 					tcpListenPort++;
@@ -370,6 +376,7 @@ namespace SyncEd.Network.Tcp
 				TcpLink deadLink = null;
 				lock (links)
 					deadLink = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
+				Console.WriteLine("All links ok: " + (deadLink == null));
 				if (deadLink != null)
 					FoundDeadLink(deadLink, p.RepairPeer);
 			}
@@ -400,12 +407,19 @@ namespace SyncEd.Network.Tcp
 				// if we are not the master node, connect to it
 				Peer masterNode = repairMasterPeers.First();
 
-				Console.WriteLine("Choose: " + (masterNode == Self));
+				Console.WriteLine("Chosen?: " + (masterNode == Self));
 
 				if (masterNode != Self)
 					EstablishConnectionTo(masterNode.EndPoint);
 				else
-					Thread.Sleep(repairReestablishWaitMs);
+				{
+					tcpListener.Start();
+					var sw = Stopwatch.StartNew();
+					while (sw.ElapsedMilliseconds < repairReestablishWaitMs)
+						WaitForTcpConnect();
+					sw.Stop();
+					tcpListener.Stop();
+				}
 
 				// flush all packets buffered during repair
 				Console.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
