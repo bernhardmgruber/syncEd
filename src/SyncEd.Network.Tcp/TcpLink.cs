@@ -10,29 +10,29 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network.Tcp
 {
-	public delegate void ObjectReceivedHandler(TcpLink sender, object o);
-	public delegate void FailedHandler(TcpLink sender, byte[] failedData);
+	internal delegate void ObjectReceivedHandler(TcpLink sender, object o);
+	internal delegate void FailedHandler(TcpLink sender, byte[] failedData);
 
 	public class TcpLink
 	{
-		public event ObjectReceivedHandler ObjectReceived;
-		public event FailedHandler Failed;
+		internal event ObjectReceivedHandler ObjectReceived;
+		internal event FailedHandler Failed;
 
-		public Peer Peer { get; private set; }
+		internal Peer Peer { get; private set; }
 
 		private TcpClient tcp;
 		private NetworkStream stream;
 		private Thread recvThread;
-		private bool closed = false;
+		private volatile bool closed = false;
 
-		public TcpLink(TcpClient tcp, Peer peer)
+		internal TcpLink(TcpClient tcp, Peer peer)
 		{
 			this.tcp = tcp;
 			this.Peer = peer;
 			stream = tcp.GetStream();
 		}
 
-		public void Start()
+		internal void Start()
 		{
 			recvThread = new Thread(() =>
 			{
@@ -44,8 +44,8 @@ namespace SyncEd.Network.Tcp
 				}
 				catch (Exception)
 				{
-					//Console.WriteLine("Receive in " + ToString() + " failed: " + e);
-					FireFailed();
+					// the fail handler has to run on another thread than the recv thread as this thread has to be shut down
+					Task.Run(() => FireFailed());
 				}
 			});
 			recvThread.Start();
@@ -62,11 +62,14 @@ namespace SyncEd.Network.Tcp
 		{
 			var handler = Failed;
 			Debug.Assert(handler != null, "FATAL: No fail handler on TCP Peer " + this);
-			Task.Run(() => handler(this, failedData)); // when failing, the fail handler have to run on another thread than the threads used by this TcpLink as these threads have to be shut down
+			handler(this, failedData);
 		}
 
-		public void Send(byte[] bytes)
+		internal void Send(byte[] bytes)
 		{
+			if (closed)
+				throw new ObjectDisposedException("TcpLink has already been closed");
+
 			try
 			{
 				stream.WriteAsync(bytes, 0, bytes.Length);
@@ -78,7 +81,7 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		public void Close()
+		internal void Close()
 		{
 			if (!closed)
 			{

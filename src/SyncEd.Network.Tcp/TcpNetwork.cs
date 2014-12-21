@@ -159,11 +159,12 @@ namespace SyncEd.Network.Tcp
 		{
 			Console.WriteLine("PANIC - " + link + " is dead");
 
-			// inform peers (and myself) that a link died
+			FoundDeadLink(link, Self);
+
+			// inform peers that a link died
 			var bytes = Serialize(new PeerDiedPacket() { DocumentName = documentName, DeadPeer = link.Peer, RepairPeer = Self });
 			udp.Send(bytes, bytes.Length);
 		}
-
 
 		private void BroadcastObject(PeerObject po, TcpLink exclude = null)
 		{
@@ -373,17 +374,20 @@ namespace SyncEd.Network.Tcp
 				// check all links if they are affected and kill affected ones
 				lock (links)
 				{
-					var failedPeer = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
-					if (failedPeer != null)
-					{
-						failedPeer.Close();
-						repairModeWaitHandle.Reset(); // start repair mode
-						repairMasterPeers.Add(p.RepairPeer);
-						repairDeadPeer = p.DeadPeer;
-						InitiateRepair();
-					}
+					var deadLink = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
+					if (deadLink != null)
+						FoundDeadLink(deadLink, p.RepairPeer);
 				}
 			}
+		}
+
+		private void FoundDeadLink(TcpLink deadLink, Peer repairPeer)
+		{
+			deadLink.Close();
+			repairModeWaitHandle.Reset(); // start repair mode
+			repairMasterPeers.Add(repairPeer);
+			repairDeadPeer = deadLink.Peer;
+			InitiateRepair();
 		}
 
 		private void InitiateRepair()
@@ -408,6 +412,10 @@ namespace SyncEd.Network.Tcp
 				foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
 					BroadcastObject(poAndExclude.Item1, poAndExclude.Item2);
 				repairModeOutgoingTcpPacketBuffer.Clear();
+
+				// notify the network
+				if (masterNode == Self)
+					BroadcastObject(new PeerObject() { Peer = Self, Object = new LostPeerPacket() { } });
 			});
 		}
 	}
