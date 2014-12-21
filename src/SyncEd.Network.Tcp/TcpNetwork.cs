@@ -392,10 +392,14 @@ namespace SyncEd.Network.Tcp
 			// wait a little as some more master node requests might come in
 			Task.Delay(repairMasterNodeWaitMs).ContinueWith(t =>
 			{
+				Console.WriteLine("Repair started. Masters:");
+				foreach (var m in repairMasterPeers)
+					Console.WriteLine(m);
+
 				// if we are not the master node, connect to it
 				Peer masterNode = repairMasterPeers.First();
 
-				Console.WriteLine("Repair started. Master: " + (masterNode == Self));
+				Console.WriteLine("Choose: " + (masterNode == Self));
 
 				if (masterNode != Self)
 					EstablishConnectionTo(masterNode.EndPoint);
