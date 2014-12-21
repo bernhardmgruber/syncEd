@@ -115,6 +115,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <AppDesigner Include="Properties\" />
+    <None Include="run3.bat" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -132,6 +133,9 @@
       <Project>{DD7C6445-8C14-4143-9281-3680080D02AF}</Project>
       <Name>SyncEd.Network</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
