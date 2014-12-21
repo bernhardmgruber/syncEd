@@ -40,7 +40,8 @@ namespace SyncEd.Network.Tcp
 	[Serializable]
 	internal class PeerDiedPacket : UdpPacket
 	{
-		internal Peer Peer { get; set; }
+		internal Peer DeadPeer { get; set; }
+		internal Peer RepairPeer { get; set; }
 	}
 
 	public class TcpNetwork : INetwork
@@ -48,9 +49,14 @@ namespace SyncEd.Network.Tcp
 		public event PacketHandler PacketArrived;
 
 		private List<TcpLink> links;
-		private ManualResetEvent ownIPWaitHandle;
-		private ManualResetEvent repairModeWaitHandle;
 		private string documentName;
+
+		private ManualResetEvent repairModeWaitHandle;
+		private List<Tuple<PeerObject, TcpLink>> repairModeOutgoingTcpPacketBuffer;
+		private SortedSet<Peer> repairMasterPeers;
+		private Peer repairDeadPeer;
+		private const int repairMasterNodeWaitMs = 200;
+		private const int repairReestablishWaitMs = 400;
 
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
 		private const int linkEstablishTimeoutMs = 1000;
@@ -61,7 +67,14 @@ namespace SyncEd.Network.Tcp
 		private Thread udpListenThread;
 		private TcpListener tcpListener;
 
+		private ManualResetEvent ownIPWaitHandle;
+
 		private BinaryFormatter formatter = new BinaryFormatter();
+
+		private bool InRepairMode
+		{
+			get { return !repairModeWaitHandle.WaitOne(0); }
+		}
 
 		#region public interface
 		public Peer Self { get; private set; }
@@ -75,6 +88,8 @@ namespace SyncEd.Network.Tcp
 			this.documentName = documentName;
 			ownIPWaitHandle = new ManualResetEvent(false);
 			repairModeWaitHandle = new ManualResetEvent(true);
+			repairModeOutgoingTcpPacketBuffer = new List<Tuple<PeerObject, TcpLink>>();
+			repairMasterPeers = new SortedSet<Peer>();
 			links = new List<TcpLink>();
 			StartListeningForPeers();
 			bool found = FindPeer();
@@ -97,10 +112,8 @@ namespace SyncEd.Network.Tcp
 		public void SendPacket(object packet)
 		{
 			Debug.Assert(Self != null, "Own IP has not been determined for send");
-
-			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
 			Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
-			BroadcastBytes(data);
+			BroadcastObject(new PeerObject() { Peer = Self, Object = packet });
 		}
 		#endregion
 
@@ -144,54 +157,46 @@ namespace SyncEd.Network.Tcp
 
 		private void PeerFailed(TcpLink link, byte[] failedData)
 		{
-			// remove link
-			lock (links)
-				links.Remove(link);
-			link.Close();
-
 			Console.WriteLine("PANIC - " + link + " is dead");
 
-			repairModeWaitHandle.Reset(); // start repair mode
-
-			// inform peers that a link died
-			var bytes = Serialize(new PeerDiedPacket() { DocumentName = documentName, Peer = link.Peer });
+			// inform peers (and myself) that a link died
+			var bytes = Serialize(new PeerDiedPacket() { DocumentName = documentName, DeadPeer = link.Peer, RepairPeer = Self });
 			udp.Send(bytes, bytes.Length);
-
-			// TODO
-
-			// wait until repair is complete
-
-			// resend failedData to all new links
-
-			// declare one peer dead
-			ObjectReveived(link, new PeerObject() { Object = new LostPeerPacket(), Peer = Self });
 		}
 
-		private void SendPacket(object packet, TcpLink link)
-		{
-			byte[] data = Serialize(new PeerObject() { Peer = Self, Object = packet });
-			Console.WriteLine("TcpLinkControl: Outgoing (" + link + "): " + packet);
-			link.Send(data);
-		}
 
-		private void BroadcastBytes(byte[] bytes, TcpLink exclude = null)
+		private void BroadcastObject(PeerObject po, TcpLink exclude = null)
 		{
-			lock (links)
-				foreach (TcpLink l in links)
-					if (l != exclude)
-						l.Send(bytes);
+			if (InRepairMode)
+			{
+				Console.WriteLine("Buffered: " + po.Object);
+				repairModeOutgoingTcpPacketBuffer.Add(Tuple.Create(po, exclude));
+			}
+			else
+			{
+				Console.WriteLine("Out (" + links.Count + "): " + po.Object);
+				byte[] data = Serialize(po);
+				lock (links)
+					foreach (TcpLink l in links)
+						if (l != exclude)
+							l.Send(data);
+			}
 		}
 
 		private void ObjectReveived(TcpLink link, object o)
 		{
 			var po = o as PeerObject;
-			Console.WriteLine("TcpLinkControl: Incoming (" + po.Peer.EndPoint + "): " + po.Object);
+			Console.WriteLine("In (" + po.Peer.EndPoint + "): " + po.Object);
 
 			// forward
 			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
-				BroadcastBytes(Serialize(po), link);
+				BroadcastObject(po, link);
 
-			FirePacketArrived(po.Object, po.Peer, p => SendPacket(p, link));
+			FirePacketArrived(po.Object, po.Peer, p =>
+			{
+				Console.WriteLine("Out (" + link + "): " + p);
+				link.Send(Serialize(new PeerObject() { Peer = Self, Object = p }));
+			});
 		}
 
 		private void FirePacketArrived(object packet, Peer peer, SendBackFunc sendBack)
@@ -302,62 +307,7 @@ namespace SyncEd.Network.Tcp
 						{
 							var packet = (UdpPacket)Deserialize(bytes);
 							Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, packet.DocumentName);
-							if (packet.DocumentName == documentName)
-							{
-								if (packet is FindPacket)
-								{
-									var p = packet as FindPacket;
-
-									if (IsLocalAddress(ep.Address) && p.ListenPort == tcpListenPort)
-									{
-										Console.WriteLine("Self broadcast detected");
-										OwnIPDetected(new IPEndPoint(ep.Address, tcpListenPort));
-									}
-									else
-									{
-										// establish connection to peer
-										var tcp = new TcpClient();
-										var peerEP = new IPEndPoint(ep.Address, p.ListenPort);
-										Console.WriteLine("TCP connect to " + peerEP);
-										try
-										{
-											tcp.Connect(peerEP);
-											tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
-										}
-										catch (Exception e)
-										{
-											Console.WriteLine("Failed to connet: " + e);
-											tcp.Close();
-										}
-
-										Console.WriteLine("Connection established");
-										NewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEP }));
-									}
-								}
-								else if (packet is PeerDiedPacket)
-								{
-									var p = packet as PeerDiedPacket;
-
-									Console.WriteLine("Received panic packet");
-
-									// check all links if they are affected and kill affected ones
-									bool foundDead = false;
-									lock (links)
-									{
-										var failedPeer = links.Where(l => l.Peer.Equals(p.Peer)).FirstOrDefault();
-										if (failedPeer != null)
-										{
-											foundDead = true;
-											failedPeer.Close();
-											repairModeWaitHandle.Reset(); // start panic mode
-										}
-									}
-
-
-								}
-							}
-							else
-								Console.WriteLine("Document mismatch");
+							ProcessUdpPacket(packet, ep);
 						}
 					}
 					catch (Exception e)
@@ -368,6 +318,97 @@ namespace SyncEd.Network.Tcp
 			});
 
 			udpListenThread.Start();
+		}
+
+		private void EstablishConnectionTo(IPEndPoint peerEP)
+		{
+			var tcp = new TcpClient();
+			Console.WriteLine("TCP connect to " + peerEP);
+			try
+			{
+				tcp.Connect(peerEP);
+				tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Failed to connet: " + e);
+				tcp.Close();
+			}
+
+			Console.WriteLine("Connection established");
+			NewLinkEstablished(new TcpLink(tcp, new Peer() { EndPoint = peerEP }));
+		}
+
+		private void ProcessUdpPacket(UdpPacket packet, IPEndPoint endpoint)
+		{
+			if (packet.DocumentName == documentName)
+			{
+				if (packet is FindPacket)
+					ProcessUdpFind(packet as FindPacket, endpoint);
+				else if (packet is PeerDiedPacket)
+					ProcessUdpPanic(packet as PeerDiedPacket);
+				else
+					Console.WriteLine("Warning: Unrecognized Udp Packet");
+			}
+			else
+				Console.WriteLine("Document mismatch");
+		}
+
+		private void ProcessUdpFind(FindPacket p, IPEndPoint endpoint)
+		{
+			if (IsLocalAddress(endpoint.Address) && p.ListenPort == tcpListenPort)
+				OwnIPDetected(new IPEndPoint(endpoint.Address, tcpListenPort));
+			else
+				EstablishConnectionTo(new IPEndPoint(endpoint.Address, p.ListenPort));
+		}
+
+		private void ProcessUdpPanic(PeerDiedPacket p)
+		{
+			Console.WriteLine("Received panic packet");
+
+			if (InRepairMode && p.DeadPeer != repairDeadPeer)
+				Console.WriteLine("FATAL: Incoming panic while currently repairing other node. This is not implemented =/");
+			else
+			{
+				// check all links if they are affected and kill affected ones
+				lock (links)
+				{
+					var failedPeer = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
+					if (failedPeer != null)
+					{
+						failedPeer.Close();
+						repairModeWaitHandle.Reset(); // start repair mode
+						repairMasterPeers.Add(p.RepairPeer);
+						repairDeadPeer = p.DeadPeer;
+						InitiateRepair();
+					}
+				}
+			}
+		}
+
+		private void InitiateRepair()
+		{
+			// wait a little as some more master node requests might come in
+			Task.Delay(repairMasterNodeWaitMs).ContinueWith(t =>
+			{
+				// if we are not the master node, connect to it
+				Peer masterNode = repairMasterPeers.First();
+				if (masterNode != Self)
+					EstablishConnectionTo(masterNode.EndPoint);
+				else
+					Thread.Sleep(repairReestablishWaitMs);
+
+				// disable repair mode
+				repairModeWaitHandle.Set();
+
+				repairDeadPeer = null;
+				repairMasterPeers = new SortedSet<Peer>();
+
+				// flush all packets buffered during repair
+				foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
+					BroadcastObject(poAndExclude.Item1, poAndExclude.Item2);
+				repairModeOutgoingTcpPacketBuffer.Clear();
+			});
 		}
 	}
 }
