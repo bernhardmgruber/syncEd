@@ -46,9 +46,10 @@ namespace SyncEd.Network.Tcp
 					while (true)
 						FireObjectReceived(f.Deserialize(stream));
 				}
-				catch (Exception)
+				catch (Exception e)
 				{
 					// the fail handler has to run on another thread than the recv thread as this thread has to be shut down
+					Console.WriteLine("Receive in " + this + " failed: " + e);
 					Task.Run(() => FireFailed());
 				}
 			});
@@ -97,7 +98,7 @@ namespace SyncEd.Network.Tcp
 			if (disposed)
 				return "TcpLink {disposed}";
 			else
-				return "TcpLink {" + (tcp.Client.RemoteEndPoint as IPEndPoint) + "}";
+				return "TcpLink {" + Peer + "}";
 		}
 	}
 }

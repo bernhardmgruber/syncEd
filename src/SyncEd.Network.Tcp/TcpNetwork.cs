@@ -59,7 +59,8 @@ namespace SyncEd.Network.Tcp
 		private const int repairReestablishWaitMs = 1000;
 
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
-		private const int linkEstablishTimeoutMs = 1000;
+		private const int linkEstablishTimeoutMs = 200;
+		private const int linkHandshakeTimeoutMs = 200;
 
 		private int tcpListenPort = 1338;    // first tried TCP port for listening after broadcasts
 
@@ -92,14 +93,19 @@ namespace SyncEd.Network.Tcp
 			repairMasterPeers = new SortedSet<Peer>();
 			links = new List<TcpLink>();
 
+			tcpListener = FindTcpListener();
+
 			StartListeningForPeers();
 			bool found = FindPeer();
+
 			ownIPWaitHandle.WaitOne(); // wait for listener thread to receive self broadcast and determine own IP
+
 			return found;
 		}
 
 		public void Stop()
 		{
+			tcpListener.Stop();
 			udp.Close();
 			udpListenThread.Join();
 			lock (links)
@@ -112,7 +118,7 @@ namespace SyncEd.Network.Tcp
 		public void SendPacket(object packet)
 		{
 			Debug.Assert(Self != null, "Own IP has not been determined for send");
-			BroadcastObject(new PeerObject() { Peer = Self, Object = packet });
+			TcpBroadcastObject(new PeerObject() { Peer = Self, Object = packet });
 		}
 		#endregion
 
@@ -148,7 +154,7 @@ namespace SyncEd.Network.Tcp
 		private void NewLinkEstablished(TcpClient tcp, Peer peer)
 		{
 			lock (links)
-				links.Add(new TcpLink(tcp, peer, ObjectReveived, PeerFailed));
+				links.Add(new TcpLink(tcp, peer, TcpObjectReveived, PeerFailed));
 		}
 
 		private void PeerFailed(TcpLink link, byte[] failedData)
@@ -157,11 +163,16 @@ namespace SyncEd.Network.Tcp
 			FoundDeadLink(link, Self);
 
 			// inform peers that a link died
-			var bytes = Serialize(new PeerDiedPacket() { DocumentName = documentName, DeadPeer = link.Peer, RepairPeer = Self });
-			udp.Send(bytes, bytes.Length);
+			UdpBroadcastObject(new PeerDiedPacket() { DocumentName = documentName, DeadPeer = link.Peer, RepairPeer = Self });
 		}
 
-		private void BroadcastObject(PeerObject po, TcpLink exclude = null, bool overrideRepair = false)
+		private void UdpBroadcastObject(object o)
+		{
+			Console.WriteLine("UDP out: " + o.GetType().Name);
+			udp.Client.SendTo(Serialize(o), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
+		}
+
+		private void TcpBroadcastObject(PeerObject po, TcpLink exclude = null, bool overrideRepair = false)
 		{
 			if (!overrideRepair && InRepairMode)
 			{
@@ -170,7 +181,7 @@ namespace SyncEd.Network.Tcp
 			}
 			else
 			{
-				Console.WriteLine("Out (" + links.Count + "): " + po.Object.GetType().Name);
+				Console.WriteLine("TCP out (" + links.Count + "): " + po.Object.GetType().Name);
 				byte[] data = Serialize(po);
 				lock (links)
 					foreach (TcpLink l in links)
@@ -179,18 +190,18 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		private void ObjectReveived(TcpLink link, object o)
+		private void TcpObjectReveived(TcpLink link, object o)
 		{
 			var po = o as PeerObject;
-			Console.WriteLine("In (" + po.Peer.EndPoint + "): " + po.Object.GetType().Name);
+			Console.WriteLine("TCP in (" + po.Peer.EndPoint + "): " + po.Object.GetType().Name);
 
 			// forward
 			if (po.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
-				BroadcastObject(po, link);
+				TcpBroadcastObject(po, link);
 
 			FirePacketArrived(po.Object, po.Peer, p =>
 			{
-				Console.WriteLine("Out (" + link + "): " + p.GetType().Name);
+				Console.WriteLine("TCP out (" + link + "): " + p.GetType().Name);
 				link.Send(Serialize(new PeerObject() { Peer = Self, Object = p }));
 			});
 		}
@@ -214,6 +225,9 @@ namespace SyncEd.Network.Tcp
 				Debug.Assert(tcp.GetStream().Read(portBytes, 0, sizeof(int)) == sizeof(int)); // assume an int gets sent at once
 				int remotePort = BitConverter.ToInt32(portBytes, 0);
 
+				// send own port
+				tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
+
 				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
 				var peerEp = new IPEndPoint(address, remotePort);
 				Console.WriteLine("TCP connect from " + peerEp + ". ESTABLISHED");
@@ -222,10 +236,7 @@ namespace SyncEd.Network.Tcp
 				return true;
 			}
 			else
-			{
-				Console.WriteLine("No answer. I'm first owner");
 				return false;
-			}
 		}
 
 		/// <summary>
@@ -233,16 +244,15 @@ namespace SyncEd.Network.Tcp
 		/// </summary>
 		internal bool FindPeer()
 		{
-			tcpListener.Start(1);
-
 			// send a broadcast with the document name into the network
 			Console.WriteLine("Broadcasting for " + documentName);
-			udp.Client.SendTo(Serialize(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort }), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
+			UdpBroadcastObject(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort });
 
 			// wait for an answer
 			//Console.WriteLine("Waiting for TCP connect");
 			var r = WaitForTcpConnect();
-			tcpListener.Stop();
+			if(!r)
+				Console.WriteLine("No answer. I'm first owner");
 			return r;
 		}
 
@@ -254,23 +264,26 @@ namespace SyncEd.Network.Tcp
 		private TcpListener FindTcpListener()
 		{
 			// find and open TCP listening port for incoming connection
-			while (true)
+			TcpListener l = null;
+			for (;tcpListenPort < 0xFFFF; tcpListenPort++)
 			{
 				try
 				{
-					var l = new TcpListener(IPAddress.Any, tcpListenPort);
-					Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
-					return l;
+					l = new TcpListener(IPAddress.Any, tcpListenPort);
+					l.ExclusiveAddressUse = true;
+					l.Start();
+					break;
 				}
 				catch (Exception)
 				{
-					//Console.WriteLine("Failed to establish TCP listener on port " + tcpListenPort + ": " + e);
-					tcpListenPort++;
-					if (tcpListenPort >= 0xFFFF)
-						throw new Exception("Failed to find a TCP port for listening");
 					continue;
 				}
 			}
+			if(l == null)
+				throw new Exception("Failed to find a TCP port for listening");
+
+			Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
+			return l;
 		}
 
 		/// <summary>
@@ -279,8 +292,6 @@ namespace SyncEd.Network.Tcp
 		/// <param name="documentName"></param>
 		private void StartListeningForPeers()
 		{
-			tcpListener = FindTcpListener();
-
 			udp = new UdpClient();
 			udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 			udp.Client.Bind(new IPEndPoint(IPAddress.Any, broadcastPort));
@@ -292,7 +303,7 @@ namespace SyncEd.Network.Tcp
 				{
 					try
 					{
-						Console.WriteLine("Waiting for broadcast");
+						//Console.WriteLine("Waiting for broadcast");
 						var ep = new IPEndPoint(IPAddress.Any, broadcastPort);
 						byte[] bytes;
 						try
@@ -307,7 +318,7 @@ namespace SyncEd.Network.Tcp
 						if (bytes != null && bytes.Length != 0)
 						{
 							var packet = (UdpPacket)Deserialize(bytes);
-							Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, packet.DocumentName);
+							//Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, packet.DocumentName);
 							ProcessUdpPacket(packet, ep);
 						}
 					}
@@ -328,7 +339,19 @@ namespace SyncEd.Network.Tcp
 			try
 			{
 				tcp.Connect(peerEP);
+				tcp.ReceiveTimeout = linkHandshakeTimeoutMs;
+
+				// send own port
 				tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
+
+				// receive remote port
+				byte[] bytes = new byte[sizeof(int)];
+				Debug.Assert(tcp.GetStream().Read(bytes, 0, sizeof(int)) == sizeof(int));
+				int remotePort = BitConverter.ToInt32(bytes, 0);
+				if (peerEP.Port != remotePort)
+					throw new Exception("Port mismatch during handshake");
+
+				tcp.ReceiveTimeout = 0;
 			}
 			catch (Exception e)
 			{
@@ -343,6 +366,7 @@ namespace SyncEd.Network.Tcp
 
 		private void ProcessUdpPacket(UdpPacket packet, IPEndPoint endpoint)
 		{
+			Console.WriteLine("UDP in: " + packet.GetType().Name);
 			if (packet.DocumentName == documentName)
 			{
 				if (packet is FindPacket)
@@ -368,7 +392,7 @@ namespace SyncEd.Network.Tcp
 		{
 			Console.WriteLine("Received panic packet");
 
-			if (InRepairMode && p.DeadPeer != repairDeadPeer)
+			if (InRepairMode && !p.DeadPeer.Equals(repairDeadPeer))
 				Console.WriteLine("FATAL: Incoming panic while currently repairing other node. This is not implemented =/");
 			else
 			{
@@ -413,18 +437,16 @@ namespace SyncEd.Network.Tcp
 					EstablishConnectionTo(masterNode.EndPoint);
 				else
 				{
-					tcpListener.Start();
 					var sw = Stopwatch.StartNew();
 					while (sw.ElapsedMilliseconds < repairReestablishWaitMs)
 						WaitForTcpConnect();
 					sw.Stop();
-					tcpListener.Stop();
 				}
 
 				// flush all packets buffered during repair
 				Console.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
 				foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
-					BroadcastObject(poAndExclude.Item1, poAndExclude.Item2, true);
+					TcpBroadcastObject(poAndExclude.Item1, poAndExclude.Item2, true);
 				repairModeOutgoingTcpPacketBuffer.Clear();
 
 				// notify the network
@@ -432,7 +454,7 @@ namespace SyncEd.Network.Tcp
 				if (masterNode == Self) {
 					var lostPeerPacket = new LostPeerPacket() { };
 					FirePacketArrived(lostPeerPacket, Self, p => { });
-					BroadcastObject(new PeerObject() { Peer = Self, Object = lostPeerPacket }, null, true);
+					TcpBroadcastObject(new PeerObject() { Peer = Self, Object = lostPeerPacket }, null, true);
 				}
 
 				repairDeadPeer = null;
