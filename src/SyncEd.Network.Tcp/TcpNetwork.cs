@@ -215,7 +215,7 @@ namespace SyncEd.Network.Tcp
 			udp.Client.SendTo(Serialize(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort }), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
 
 			// wait for an answer
-			Console.WriteLine("Waiting for TCP connect");
+			//Console.WriteLine("Waiting for TCP connect");
 			if (peerTask.Wait(linkEstablishTimeoutMs))
 			{
 				var tcp = peerTask.Result;
@@ -227,8 +227,8 @@ namespace SyncEd.Network.Tcp
 
 				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
 				var peerEp = new IPEndPoint(address, remotePort);
-				Console.WriteLine("TCP connect from " + peerEp);
-				Console.WriteLine("Connection established");
+				Console.WriteLine("TCP connect from " + peerEp + ". ESTABLISHED");
+				//Console.WriteLine("Connection established");
 				NewLinkEstablished(tcp, new Peer() { EndPoint = peerEp });
 				return true;
 			}
@@ -318,7 +318,7 @@ namespace SyncEd.Network.Tcp
 		private void EstablishConnectionTo(IPEndPoint peerEP)
 		{
 			var tcp = new TcpClient();
-			Console.WriteLine("TCP connect to " + peerEP);
+			Console.Write("TCP connect to " + peerEP + ": ");
 			try
 			{
 				tcp.Connect(peerEP);
@@ -326,11 +326,12 @@ namespace SyncEd.Network.Tcp
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine("Failed to connet: " + e);
+				Console.WriteLine("Failed: " + e);
 				tcp.Close();
+				return;
 			}
 
-			Console.WriteLine("Connection established");
+			Console.WriteLine("ESTABLISHED");
 			NewLinkEstablished(tcp, new Peer() { EndPoint = peerEP });
 		}
 
