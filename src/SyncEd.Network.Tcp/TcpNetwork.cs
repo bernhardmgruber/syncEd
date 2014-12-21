@@ -112,7 +112,6 @@ namespace SyncEd.Network.Tcp
 		public void SendPacket(object packet)
 		{
 			Debug.Assert(Self != null, "Own IP has not been determined for send");
-			Console.WriteLine("TcpLinkControl: Outgoing (" + links.Count + "): " + packet);
 			BroadcastObject(new PeerObject() { Peer = Self, Object = packet });
 		}
 		#endregion
@@ -411,8 +410,11 @@ namespace SyncEd.Network.Tcp
 
 				// notify the network
 				Console.WriteLine("Send peer lost notification");
-				if (masterNode == Self)
-					BroadcastObject(new PeerObject() { Peer = Self, Object = new LostPeerPacket() { } }, null, true);
+				if (masterNode == Self) {
+					var lostPeerPacket = new LostPeerPacket() { };
+					FirePacketArrived(lostPeerPacket, Self, p => { });
+					BroadcastObject(new PeerObject() { Peer = Self, Object = lostPeerPacket }, null, true);
+				}
 
 				repairDeadPeer = null;
 				repairMasterPeers = new SortedSet<Peer>();
