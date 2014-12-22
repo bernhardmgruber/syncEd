@@ -12,7 +12,7 @@ namespace SyncEd.Editor
         {
             //Bind<IDocument>().To<StringBuilderDocument>().InSingletonScope();
             Bind<IDocument>().To<NetworkDocument>().InSingletonScope();
-            Bind<INetwork>().To<TcpNetwork>().InSingletonScope();
+            Bind<INetwork>().To<TreeNetwork>().InSingletonScope();
         }
     }
 }

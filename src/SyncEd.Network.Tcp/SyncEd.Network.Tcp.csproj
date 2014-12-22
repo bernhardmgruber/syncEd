@@ -36,9 +36,14 @@
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TcpNetwork.cs" />
+    <Compile Include="Packets.cs" />
+    <Compile Include="PeerComparer.cs" />
+    <Compile Include="TcpEstablisher.cs" />
+    <Compile Include="TreeNetwork.cs" />
     <Compile Include="TcpLink.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UdpBroadcastNetwork.cs" />
+    <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">

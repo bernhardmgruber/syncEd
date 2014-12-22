@@ -10,9 +10,6 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network.Tcp
 {
-	internal delegate void ObjectReceivedHandler(TcpLink sender, object o);
-	internal delegate void FailedHandler(TcpLink sender, byte[] failedData);
-
 	public class TcpLink : IDisposable
 	{
 		internal Peer Peer { get; private set; }
@@ -22,10 +19,10 @@ namespace SyncEd.Network.Tcp
 		private Thread recvThread;
 		private volatile bool disposed = false;
 
-		private ObjectReceivedHandler objectReceived;
-		private FailedHandler failed;
+		private Action<TcpLink, object> objectReceived;
+		private Action<TcpLink, byte[]> failed;
 
-		internal TcpLink(TcpClient tcp, Peer peer, ObjectReceivedHandler objectReceived, FailedHandler failed)
+		internal TcpLink(TcpClient tcp, Peer peer, Action<TcpLink, object> objectReceived, Action<TcpLink, byte[]> failed)
 		{
 			this.tcp = tcp;
 			this.Peer = peer;
