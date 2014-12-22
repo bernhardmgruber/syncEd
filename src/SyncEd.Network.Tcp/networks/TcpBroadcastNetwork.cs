@@ -13,7 +13,7 @@ namespace SyncEd.Network.Tcp
 	{
 		private TcpListener listener;
 
-		private const int linkEstablishTimeoutMs = 200;
+		private const int linkEstablishTimeoutMs = 500;
 		private const int linkHandshakeTimeoutMs = 200;
 
 		//private Action<TcpClient, Peer> newLinkEstablished;
@@ -89,7 +89,7 @@ namespace SyncEd.Network.Tcp
 			}
 			catch (Exception)
 			{
-				Console.WriteLine("Connect failed");
+				Console.WriteLine("Connect failed. Timeout?");
 				tcp.Close();
 				return null;
 			}
@@ -106,8 +106,8 @@ namespace SyncEd.Network.Tcp
 		/// <returns></returns>
 		public bool WaitForTcpConnect()
 		{
-			//Console.WriteLine("Waiting for TCP connect");
 			var peerTask = listener.AcceptTcpClientAsync();
+			Console.WriteLine("Waiting for TCP connect");
 			if (peerTask.Wait(linkEstablishTimeoutMs))
 			{
 				var tcp = peerTask.Result;
@@ -138,7 +138,10 @@ namespace SyncEd.Network.Tcp
 				return true;
 			}
 			else
+			{
+				Console.WriteLine("Timeout");
 				return false;
+			}
 		}
 
 		private void NewLinkEstablished(TcpClient tcp, Peer peer)

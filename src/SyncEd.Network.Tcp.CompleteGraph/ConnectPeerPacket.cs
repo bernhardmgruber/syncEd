@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace SyncEd.Network.Tcp.CompleteGraph
 {
 	[Serializable]
-	internal class ConnectPeerPacket
+	internal class ExpectNewPeerPacket
 	{
 		internal Peer Peer { get; set; }
 	}
