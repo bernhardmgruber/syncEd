@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}</ProjectGuid>
+    <ProjectGuid>{ACB8797C-6A73-47D4-8187-FD469D6F5F7C}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SyncEd.Network.Tcp</RootNamespace>
-    <AssemblyName>SyncEd.Network.Tcp</AssemblyName>
+    <RootNamespace>SyncEd.Network.Tcp.CompleteGraph</RootNamespace>
+    <AssemblyName>SyncEd.Network.Tcp.CompleteGraph</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -33,21 +33,21 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BasicNetwork.cs" />
-    <Compile Include="packets\FindPacket.cs" />
-    <Compile Include="utility\PeerComparer.cs" />
-    <Compile Include="networks\TcpBroadcastNetwork.cs" />
-    <Compile Include="networks\TcpLink.cs" />
+    <Compile Include="CompleteGraphNetwork.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="packets\TcpObject.cs" />
-    <Compile Include="networks\UdpBroadcastNetwork.cs" />
-    <Compile Include="packets\UdpObject.cs" />
-    <Compile Include="utility\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\SyncEd.Network.Tcp\SyncEd.Network.Tcp.csproj">
+      <Project>{f4ff7049-fc88-4cfd-bdc5-d84319b2eba5}</Project>
+      <Name>SyncEd.Network.Tcp</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">
       <Project>{dd7c6445-8c14-4143-9281-3680080d02af}</Project>
       <Name>SyncEd.Network</Name>

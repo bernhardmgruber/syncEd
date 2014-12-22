@@ -13,12 +13,11 @@ namespace SyncEd.Network.Tcp
 	{
 		private Thread udpListenThread;
 		private UdpClient udp;
-		private readonly int broadcastPort;
+		private readonly int broadcastPort = 1337; // UDP port for sending broadcasts
 		private readonly Action<object, IPEndPoint> objectReceived;
 
-		public UdpBroadcastNetwork(int broadcastPort, Action<object, IPEndPoint> objectReceived)
+		public UdpBroadcastNetwork(Action<object, IPEndPoint> objectReceived)
 		{
-			this.broadcastPort = broadcastPort;
 			this.objectReceived = objectReceived;
 
 			Start();

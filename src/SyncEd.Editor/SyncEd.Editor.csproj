@@ -125,9 +125,17 @@
       <Project>{612eb1bd-93fe-4811-aa4d-1550a9bd944d}</Project>
       <Name>SyncEd.Document</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SyncEd.Network.Tcp.CompleteGraph\SyncEd.Network.Tcp.CompleteGraph.csproj">
+      <Project>{acb8797c-6a73-47d4-8187-fd469d6f5f7c}</Project>
+      <Name>SyncEd.Network.Tcp.CompleteGraph</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SyncEd.Network.Tcp.SpanningTree\SyncEd.Network.Tcp.SpanningTree.csproj">
       <Project>{63ff2b0f-4c50-4d46-8823-eeb38bb13112}</Project>
       <Name>SyncEd.Network.Tcp.SpanningTree</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SyncEd.Network.Tcp\SyncEd.Network.Tcp.csproj">
+      <Project>{f4ff7049-fc88-4cfd-bdc5-d84319b2eba5}</Project>
+      <Name>SyncEd.Network.Tcp</Name>
     </ProjectReference>
     <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">
       <Project>{DD7C6445-8C14-4143-9281-3680080D02AF}</Project>

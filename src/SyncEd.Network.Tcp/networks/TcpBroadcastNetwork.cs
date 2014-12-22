@@ -148,14 +148,19 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		public void BroadcastObject(object o, TcpLink exclude = null)
+		public void MulticastObject(object o, Predicate<TcpLink> pred)
 		{
 			Console.WriteLine("TCP out (" + Links.Count + "): " + o);
 			byte[] data = Utils.Serialize(o);
 			lock (Links)
 				foreach (TcpLink l in Links)
-					if (l != exclude)
+					if (pred(l))
 						l.Send(data);
+		}
+
+		public void BroadcastObject(object o)
+		{
+			MulticastObject(o, l => true);
 		}
 
 		public void Dispose()
