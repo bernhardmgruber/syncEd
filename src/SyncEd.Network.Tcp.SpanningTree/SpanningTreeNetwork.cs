@@ -61,7 +61,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 
 		protected override void PeerFailed(TcpLink link, byte[] failedData)
 		{
-			Console.WriteLine("PANIC - " + link + " is dead");
+			base.PeerFailed(link, failedData);
 			RepairDeadLink(link, Self);
 
 			// inform peers that a link died
@@ -81,6 +81,10 @@ namespace SyncEd.Network.Tcp.SpanningTree
 				ProcessUdpPeerDied(o.Object as PeerDiedPacket);
 			else
 				Console.WriteLine("Warning: Unrecognized Udp Packet");
+		}
+
+		protected override void ConnectedPeer(Peer ep)
+		{
 		}
 
 		private void ProcessUdpPeerDied(PeerDiedPacket p)

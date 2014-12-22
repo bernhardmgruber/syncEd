@@ -6,12 +6,10 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network.Tcp
 {
-
-
 	[Serializable]
-	public class PeerDiedPacket
+	internal class PeerDiedPacket
 	{
-		public Peer DeadPeer { get; set; }
-		public Peer RepairPeer { get; set; }
+		internal Peer DeadPeer { get; set; }
+		internal Peer RepairPeer { get; set; }
 	}
 }

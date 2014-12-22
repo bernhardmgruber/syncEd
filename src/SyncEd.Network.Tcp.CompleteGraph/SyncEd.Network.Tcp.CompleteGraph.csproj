@@ -41,6 +41,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CompleteGraphNetwork.cs" />
+    <Compile Include="ConnectPeerPacket.cs" />
+    <Compile Include="PeerCountPacket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

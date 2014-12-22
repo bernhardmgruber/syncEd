@@ -59,13 +59,13 @@ namespace SyncEd.Network.Tcp
 			Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
 		}
 
-		public void EstablishConnectionTo(IPEndPoint peerEP)
+		public Peer EstablishConnectionTo(IPEndPoint peerEP)
 		{
 			lock (Links)
 				if (Links.Find(l => l.Peer.Equals(peerEP)) != null)
 				{
 					Console.WriteLine("Tried to connet to peer twice.");
-					return;
+					return null;
 				}
 
 			var tcp = new TcpClient();
@@ -91,11 +91,13 @@ namespace SyncEd.Network.Tcp
 			{
 				Console.WriteLine("Connect failed");
 				tcp.Close();
-				return;
+				return null;
 			}
 
 			Console.WriteLine("ESTABLISHED");
-			NewLinkEstablished(tcp, new Peer() { EndPoint = peerEP });
+			var peer = new Peer() { EndPoint = peerEP };
+			NewLinkEstablished(tcp, peer);
+			return peer;
 		}
 
 		/// <summary>
@@ -141,10 +143,12 @@ namespace SyncEd.Network.Tcp
 
 		private void NewLinkEstablished(TcpClient tcp, Peer peer)
 		{
+			TcpLink l = null;
 			lock (Links)
 			{
 				Debug.Assert(Links.Find(t => t.Peer.Equals(peer)) == null);
-				Links.Add(new TcpLink(tcp, peer, objectReceived, linkFailed));
+				l = new TcpLink(tcp, peer, objectReceived, linkFailed);
+				Links.Add(l);
 			}
 		}
 

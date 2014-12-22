@@ -22,7 +22,7 @@ namespace SyncEd.Network.Tcp
 
 		protected abstract void ProcessCustomTcpObject(TcpLink link, TcpObject o);
 		protected abstract void ProcessCustomUdpObject(IPEndPoint endpoint, UdpObject o);
-		protected abstract void PeerFailed(TcpLink link, byte[] failedData);
+		protected abstract void ConnectedPeer(Peer ep);
 
 		public virtual bool Start(string documentName)
 		{
@@ -54,6 +54,11 @@ namespace SyncEd.Network.Tcp
 			var handler = PacketArrived;
 			if (handler != null)
 				handler(packet, peer, sendBack);
+		}
+
+		protected virtual void PeerFailed(TcpLink link, byte[] failedData)
+		{
+			Console.WriteLine("Lost connection to: " + link);
 		}
 
 		private void ProcessUdpObject(object o, IPEndPoint endpoint)
@@ -90,14 +95,17 @@ namespace SyncEd.Network.Tcp
 		{
 			if (Utils.IsLocalAddress(endpoint.Address) && p.ListenPort == tcpNetwork.ListenPort)
 				OwnIPDetected(new IPEndPoint(endpoint.Address, tcpNetwork.ListenPort));
-			else
-				tcpNetwork.EstablishConnectionTo(new IPEndPoint(endpoint.Address, p.ListenPort));
+			else {
+				var peer = tcpNetwork.EstablishConnectionTo(new IPEndPoint(endpoint.Address, p.ListenPort));
+				if (peer != null)
+					ConnectedPeer(peer);
+			}
 		}
 
 		/// <summary>
 		/// Tries to find a peer for the given document name on the network. If no peer could be found, null is returned
 		/// </summary>
-		protected bool FindPeer()
+		private bool FindPeer()
 		{
 			// send a broadcast with the document name into the network
 			Console.WriteLine("Broadcasting for " + documentName);
