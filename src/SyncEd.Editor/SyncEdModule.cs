@@ -12,8 +12,8 @@ namespace SyncEd.Editor
         public override void Load()
         {
             Bind<IDocument>().To<NetworkDocument>().InSingletonScope();
-            Bind<INetwork>().To<SpanningTreeNetwork>().InSingletonScope();
-            //Bind<INetwork>().To<CompleteGraphNetwork>().InSingletonScope();
+            //Bind<INetwork>().To<SpanningTreeNetwork>().InSingletonScope();
+            Bind<INetwork>().To<CompleteGraphNetwork>().InSingletonScope();
         }
     }
 }

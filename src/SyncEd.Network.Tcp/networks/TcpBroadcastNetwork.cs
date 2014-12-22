@@ -80,7 +80,7 @@ namespace SyncEd.Network.Tcp
 
 				// receive remote port
 				byte[] bytes = new byte[sizeof(int)];
-				Debug.Assert(tcp.GetStream().Read(bytes, 0, sizeof(int)) == sizeof(int));
+				Debug.Assert(tcp.GetStream().Read(bytes, 0, sizeof(int)) == sizeof(int), "sizeof(int) in Establish");
 				int remotePort = BitConverter.ToInt32(bytes, 0);
 				if (peerEP.Port != remotePort)
 					throw new Exception("Port mismatch during handshake");
@@ -114,7 +114,7 @@ namespace SyncEd.Network.Tcp
 
 				// receive peer's port
 				byte[] portBytes = new byte[sizeof(int)];
-				Debug.Assert(tcp.GetStream().Read(portBytes, 0, sizeof(int)) == sizeof(int)); // assume an int gets sent at once
+				Debug.Assert(tcp.GetStream().Read(portBytes, 0, sizeof(int)) == sizeof(int), "sizeof(int) in WaitForConnect"); // assume an int gets sent at once
 				int remotePort = BitConverter.ToInt32(portBytes, 0);
 
 				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
@@ -146,7 +146,7 @@ namespace SyncEd.Network.Tcp
 			TcpLink l = null;
 			lock (Links)
 			{
-				Debug.Assert(Links.Find(t => t.Peer.Equals(peer)) == null);
+				Debug.Assert(Links.Find(t => t.Peer.Equals(peer)) == null, "Peer " + peer + "is already connected");
 				l = new TcpLink(tcp, peer, objectReceived, linkFailed);
 				Links.Add(l);
 			}

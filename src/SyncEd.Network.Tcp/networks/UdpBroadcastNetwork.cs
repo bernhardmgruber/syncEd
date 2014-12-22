@@ -73,7 +73,7 @@ namespace SyncEd.Network.Tcp
 
 		public void BroadcastObject(object o)
 		{
-			Console.WriteLine("UDP out: " + o.GetType().Name);
+			Console.WriteLine("UDP out: " + o);
 			udp.Client.SendTo(Utils.Serialize(o), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
 		}
 	}

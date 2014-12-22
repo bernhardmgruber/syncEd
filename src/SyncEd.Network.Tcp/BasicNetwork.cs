@@ -20,7 +20,7 @@ namespace SyncEd.Network.Tcp
 		protected UdpBroadcastNetwork udpNetwork;
 		protected TcpBroadcastNetwork tcpNetwork;
 
-		protected abstract void ProcessCustomTcpObject(TcpLink link, TcpObject o);
+		protected abstract bool ProcessCustomTcpObject(TcpLink link, TcpObject o);
 		protected abstract void ProcessCustomUdpObject(IPEndPoint endpoint, UdpObject o);
 		protected abstract void ConnectedPeer(Peer ep);
 
@@ -59,13 +59,16 @@ namespace SyncEd.Network.Tcp
 		protected virtual void PeerFailed(TcpLink link, byte[] failedData)
 		{
 			Console.WriteLine("Lost connection to: " + link);
+			lock (tcpNetwork.Links)
+				tcpNetwork.Links.Remove(link);
+			link.Dispose();
 		}
 
 		private void ProcessUdpObject(object o, IPEndPoint endpoint)
 		{
 			var packet = (UdpObject)o;
 
-			Console.WriteLine("UDP in: " + packet.GetType().Name);
+			Console.WriteLine("UDP in: " + o);
 			if (packet.DocumentName == documentName)
 			{
 				if (packet.Object is FindPacket)
@@ -80,15 +83,14 @@ namespace SyncEd.Network.Tcp
 		private void ProcessTcpObject(TcpLink link, object o)
 		{
 			var po = o as TcpObject;
-			Console.WriteLine("TCP in (" + po.Peer.EndPoint + "): " + po.Object.GetType().Name);
+			Console.WriteLine("TCP in (" + po.Peer.EndPoint + "): " + po);
 
-			ProcessCustomTcpObject(link, po);
-
-			FirePacketArrived(po.Object, po.Peer, p =>
-			{
-				Console.WriteLine("TCP out (" + link + "): " + p.GetType().Name);
-				link.Send(Utils.Serialize(new TcpObject() { Peer = Self, Object = p }));
-			});
+			if(ProcessCustomTcpObject(link, po))
+				FirePacketArrived(po.Object, po.Peer, p =>
+				{
+					Console.WriteLine("TCP out (" + link + "): " + p);
+					link.Send(Utils.Serialize(new TcpObject() { Peer = Self, Object = p }));
+				});
 		}
 
 		private void ProcessUdpFind(FindPacket p, IPEndPoint endpoint)

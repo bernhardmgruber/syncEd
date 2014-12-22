@@ -15,9 +15,9 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 			tcpNetwork.BroadcastObject(new TcpObject() { Peer = Self, Object = packet });
 		}
 
-		protected override void ProcessCustomTcpObject(TcpLink link, TcpObject o)
+		protected override bool ProcessCustomTcpObject(TcpLink link, TcpObject o)
 		{
-			if(o.Object is ConnectPeerPacket)
+			if (o.Object is ConnectPeerPacket)
 			{
 				var p = (o.Object as ConnectPeerPacket);
 				if (tcpNetwork.EstablishConnectionTo(p.Peer.EndPoint) == null)
@@ -26,10 +26,13 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 			else if (o.Object is PeerCountPacket)
 			{
 				var p = (o.Object as PeerCountPacket);
-				for(int i = 0; i < p.Count; i++)
+				for (int i = 0; i < p.Count; i++)
 					if (!tcpNetwork.WaitForTcpConnect())
 						Console.WriteLine("FATAL: Expected incoming connection which never came");
 			}
+			else
+				return true;
+			return false;
 		}
 
 		protected override void ProcessCustomUdpObject(System.Net.IPEndPoint endpoint, UdpObject o)

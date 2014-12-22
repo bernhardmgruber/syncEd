@@ -68,11 +68,12 @@ namespace SyncEd.Network.Tcp.SpanningTree
 			udpNetwork.BroadcastObject(new UdpObject() { DocumentName = documentName, Object = new PeerDiedPacket() { DeadPeer = link.Peer, RepairPeer = Self } });
 		}
 
-		protected override void ProcessCustomTcpObject(TcpLink link, TcpObject o)
+		protected override bool ProcessCustomTcpObject(TcpLink link, TcpObject o)
 		{
-			// forward
+			// forward 
 			if (o.Object.GetType().IsDefined(typeof(AutoForwardAttribute), true))
 				TcpBroadcastObject(o, link);
+			return true;
 		}
 
 		protected override void ProcessCustomUdpObject(IPEndPoint endpoint, UdpObject o)
@@ -105,16 +106,17 @@ namespace SyncEd.Network.Tcp.SpanningTree
 					deadLink = tcpNetwork.Links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
 				Console.WriteLine("All links ok: " + (deadLink == null));
 				if (deadLink != null)
+				{
+					lock (tcpNetwork.Links)
+						tcpNetwork.Links.Remove(deadLink);
+					deadLink.Dispose();
 					RepairDeadLink(deadLink, p.RepairPeer);
+				}
 			}
 		}
 
 		private void RepairDeadLink(TcpLink deadLink, Peer repairMasterPeer)
 		{
-			lock (tcpNetwork.Links)
-				tcpNetwork.Links.Remove(deadLink);
-			deadLink.Dispose();
-
 			Console.WriteLine("Preparing repair mode");
 			lock (repairMasterPeers)
 			{
