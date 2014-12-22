@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace SyncEd.Editor
@@ -25,6 +26,15 @@ namespace SyncEd.Editor
             set { SetValue(HighlightRangesProperty, value); }
         }
 
+        public static readonly DependencyProperty CaretIndexProperty = DependencyProperty.Register("CaretIndex", typeof(int?), typeof(HighlightTextBox),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, CaretIndexChanged));
+
+        public new int? CaretIndex
+        {
+            get { return (int?)GetValue(CaretIndexProperty); }
+            set { SetValue(CaretIndexProperty, value); }
+        }
+
         public HighlightTextBox()
         {
             InitializeComponent();
@@ -33,6 +43,7 @@ namespace SyncEd.Editor
 
             TextChanged += (s, a) => InvalidateVisual();
             IsEnabledChanged += (s, a) => InvalidateVisual();
+            SelectionChanged += (s, a) => InvalidateVisual();
         }
 
         protected override void OnRender(DrawingContext drawingContext)
@@ -84,6 +95,58 @@ namespace SyncEd.Editor
                 ScrollViewer sv = VisualTreeHelper.GetChild(dp, 0) as ScrollViewer;
                 sv.ScrollChanged += (s, e) => InvalidateVisual();
                 scrollingEventEnabled = true;
+            }
+        }
+
+        #region CaretIndexChanged Sources
+        protected override void OnTextChanged(TextChangedEventArgs e)
+        {
+            base.OnTextChanged(e);
+            CaretIndex = base.CaretIndex;
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            CaretIndex = base.CaretIndex;
+        }
+
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+            CaretIndex = base.CaretIndex;
+        }
+
+        protected override void OnMouseDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseDown(e);
+            CaretIndex = base.CaretIndex;
+        }
+
+        protected override void OnMouseUp(MouseButtonEventArgs e)
+        {
+            base.OnMouseUp(e);
+            CaretIndex = base.CaretIndex;
+        }
+
+        protected override void OnSelectionChanged(RoutedEventArgs e)
+        {
+            base.OnSelectionChanged(e);
+            CaretIndex = base.CaretIndex;
+        }
+
+        protected override void OnLostFocus(RoutedEventArgs e)
+        {
+            base.OnLostFocus(e);
+            CaretIndex = null;
+        }
+
+        #endregion
+        private static void CaretIndexChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
+        {
+            var box = obj as TextBox;
+            if (box != null) {
+                box.CaretIndex = (int)e.NewValue;
             }
         }
     }
