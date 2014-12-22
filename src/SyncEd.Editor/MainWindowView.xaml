@@ -29,13 +29,14 @@
                 IsEnabled="{Binding IsConnected, Mode=OneWay}"
                 IsReadOnly="{Binding IsInForbiddenTextRange, Mode=OneWay}"
                 HighlightRanges="{Binding HighlightedRanges}"
-                SelectionChanged="SelectionChanged"
-                LostFocus="TextBoxLostFocus"
+                CaretIndex="{Binding CaretIndex}"
                 TextChanged="TextChanged"
                 AcceptsReturn="True"
                 AcceptsTab="True"
                 TextWrapping="Wrap"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+            <!--SelectionChanged="SelectionChanged"-->
+            <!--LostFocus="TextBoxLostFocus"-->
         </Border>
     </DockPanel>
 </Window>
