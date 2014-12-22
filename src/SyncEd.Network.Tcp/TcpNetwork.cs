@@ -179,7 +179,11 @@ namespace SyncEd.Network.Tcp
 		private void NewLinkEstablished(TcpClient tcp, Peer peer)
 		{
 			lock (links)
-				links.Add(new TcpLink(tcp, peer, TcpObjectReveived, PeerFailed));
+			{
+				var l = new TcpLink(tcp, peer, TcpObjectReveived, PeerFailed);
+				Debug.Assert(links.Find(t => t.Peer.Equals(peer)) == null);
+				links.Add(l);
+			}
 		}
 
 		private void PeerFailed(TcpLink link, byte[] failedData)
