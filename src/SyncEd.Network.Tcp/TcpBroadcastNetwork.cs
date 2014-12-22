@@ -59,7 +59,7 @@ namespace SyncEd.Network.Tcp
 			Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
 		}
 
-		internal void EstablishConnectionTo(IPEndPoint peerEP)
+		public void EstablishConnectionTo(IPEndPoint peerEP)
 		{
 			lock (Links)
 				if (Links.Find(l => l.Peer.Equals(peerEP)) != null)
@@ -102,7 +102,7 @@ namespace SyncEd.Network.Tcp
 		/// Returns true if a peer has successfully connected (handshake ok and no timeout)
 		/// </summary>
 		/// <returns></returns>
-		internal bool WaitForTcpConnect()
+		public bool WaitForTcpConnect()
 		{
 			//Console.WriteLine("Waiting for TCP connect");
 			var peerTask = listener.AcceptTcpClientAsync();

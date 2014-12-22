@@ -1,4 +1,5 @@
 ﻿using SyncEd.Network.Packets;
+using SyncEd.Network.Tcp;
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -12,9 +13,9 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Collections;
 
-namespace SyncEd.Network.Tcp
+namespace SyncEd.Network.Tcp.SpanningTree
 {
-	public class TreeNetwork : INetwork
+	public class SpanningTreeNetwork : INetwork
 	{
 		public event PacketHandler PacketArrived;
 

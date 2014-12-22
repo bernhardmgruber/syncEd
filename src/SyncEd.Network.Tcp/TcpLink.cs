@@ -12,7 +12,7 @@ namespace SyncEd.Network.Tcp
 {
 	public class TcpLink : IDisposable
 	{
-		internal Peer Peer { get; private set; }
+		public Peer Peer { get; private set; }
 
 		private TcpClient tcp;
 		private NetworkStream stream;
@@ -22,7 +22,7 @@ namespace SyncEd.Network.Tcp
 		private Action<TcpLink, object> objectReceived;
 		private Action<TcpLink, byte[]> failed;
 
-		internal TcpLink(TcpClient tcp, Peer peer, Action<TcpLink, object> objectReceived, Action<TcpLink, byte[]> failed)
+		public TcpLink(TcpClient tcp, Peer peer, Action<TcpLink, object> objectReceived, Action<TcpLink, byte[]> failed)
 		{
 			this.tcp = tcp;
 			this.Peer = peer;
@@ -63,7 +63,7 @@ namespace SyncEd.Network.Tcp
 			failed(this, failedData);
 		}
 
-		internal void Send(byte[] bytes)
+		public void Send(byte[] bytes)
 		{
 			if (disposed)
 				throw new ObjectDisposedException("TcpLink has already been closed");

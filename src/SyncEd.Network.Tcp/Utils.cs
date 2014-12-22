@@ -13,7 +13,7 @@ namespace SyncEd.Network.Tcp
 	{
 		private static BinaryFormatter formatter = new BinaryFormatter();
 
-		internal static byte[] Serialize(object o)
+		public static byte[] Serialize(object o)
 		{
 			using (var ms = new MemoryStream())
 			{
@@ -29,13 +29,13 @@ namespace SyncEd.Network.Tcp
 			}
 		}
 
-		internal static object Deserialize(byte[] bytes)
+		public static object Deserialize(byte[] bytes)
 		{
 			using (var ms = new MemoryStream(bytes))
 				return formatter.Deserialize(ms);
 		}
 
-		internal static bool IsLocalAddress(IPAddress address)
+		public static bool IsLocalAddress(IPAddress address)
 		{
 			return Dns.GetHostAddresses(Dns.GetHostName()).Any(a => a.Equals(address));
 		}

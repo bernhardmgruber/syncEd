@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 namespace SyncEd.Network.Tcp
 {
 	[Serializable]
-	internal class PeerObject
+	public class PeerObject
 	{
-		internal Peer Peer { get; set; }
-		internal object Object { get; set; }
+		public Peer Peer { get; set; }
+		public object Object { get; set; }
 
 		public override string ToString()
 		{
@@ -19,21 +19,21 @@ namespace SyncEd.Network.Tcp
 	}
 
 	[Serializable]
-	internal class UdpPacket
+	public class UdpPacket
 	{
-		internal string DocumentName { get; set; }
+		public string DocumentName { get; set; }
 	}
 
 	[Serializable]
-	internal class FindPacket : UdpPacket
+	public class FindPacket : UdpPacket
 	{
-		internal int ListenPort { get; set; }
+		public int ListenPort { get; set; }
 	}
 
 	[Serializable]
-	internal class PeerDiedPacket : UdpPacket
+	public class PeerDiedPacket : UdpPacket
 	{
-		internal Peer DeadPeer { get; set; }
-		internal Peer RepairPeer { get; set; }
+		public Peer DeadPeer { get; set; }
+		public Peer RepairPeer { get; set; }
 	}
 }

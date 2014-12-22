@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network.Tcp
 {
-	internal class PeerComparer : IComparer<Peer>
+	public class PeerComparer : IComparer<Peer>
 	{
 		private int CompareBytes(byte[] a, byte[] b)
 		{

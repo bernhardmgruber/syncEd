@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncEd.Editor", "SyncEd.Edi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncEd.Document", "SyncEd.Document\SyncEd.Document.csproj", "{612EB1BD-93FE-4811-AA4D-1550A9BD944D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncEd.Network.Tcp.SpanningTree", "SyncEd.Network.Tcp.SpanningTree\SyncEd.Network.Tcp.SpanningTree.csproj", "{63FF2B0F-4C50-4D46-8823-EEB38BB13112}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{612EB1BD-93FE-4811-AA4D-1550A9BD944D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{612EB1BD-93FE-4811-AA4D-1550A9BD944D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{612EB1BD-93FE-4811-AA4D-1550A9BD944D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63FF2B0F-4C50-4D46-8823-EEB38BB13112}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63FF2B0F-4C50-4D46-8823-EEB38BB13112}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63FF2B0F-4C50-4D46-8823-EEB38BB13112}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63FF2B0F-4C50-4D46-8823-EEB38BB13112}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

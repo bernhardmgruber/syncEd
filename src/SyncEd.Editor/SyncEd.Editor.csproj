@@ -125,9 +125,9 @@
       <Project>{612eb1bd-93fe-4811-aa4d-1550a9bd944d}</Project>
       <Name>SyncEd.Document</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SyncEd.Network.Tcp\SyncEd.Network.Tcp.csproj">
-      <Project>{F4FF7049-FC88-4CFD-BDC5-D84319B2EBA5}</Project>
-      <Name>SyncEd.Network.Tcp</Name>
+    <ProjectReference Include="..\SyncEd.Network.Tcp.SpanningTree\SyncEd.Network.Tcp.SpanningTree.csproj">
+      <Project>{63ff2b0f-4c50-4d46-8823-eeb38bb13112}</Project>
+      <Name>SyncEd.Network.Tcp.SpanningTree</Name>
     </ProjectReference>
     <ProjectReference Include="..\SyncEd.Network\SyncEd.Network.csproj">
       <Project>{DD7C6445-8C14-4143-9281-3680080D02AF}</Project>
