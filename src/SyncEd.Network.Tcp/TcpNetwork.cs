@@ -76,10 +76,12 @@ namespace SyncEd.Network.Tcp
 		private List<TcpLink> links;
 		private string documentName;
 
-		private ManualResetEvent repairModeWaitHandle;
 		private List<Tuple<PeerObject, TcpLink>> repairModeOutgoingTcpPacketBuffer;
 		private SortedSet<Peer> repairMasterPeers;
 		private Peer repairDeadPeer;
+
+		private bool InRepairMode { get { return repairDeadPeer != null; } }
+
 		private const int repairMasterNodeWaitMs = 200;
 		private const int repairReestablishWaitMs = 1000;
 
@@ -97,11 +99,6 @@ namespace SyncEd.Network.Tcp
 
 		private BinaryFormatter formatter = new BinaryFormatter();
 
-		private bool InRepairMode
-		{
-			get { return !repairModeWaitHandle.WaitOne(0); }
-		}
-
 		#region public interface
 		public Peer Self { get; private set; }
 
@@ -113,7 +110,6 @@ namespace SyncEd.Network.Tcp
 		{
 			this.documentName = documentName;
 			ownIPWaitHandle = new ManualResetEvent(false);
-			repairModeWaitHandle = new ManualResetEvent(true);
 			repairModeOutgoingTcpPacketBuffer = new List<Tuple<PeerObject, TcpLink>>();
 			repairMasterPeers = new SortedSet<Peer>(new PeerComparer());
 			links = new List<TcpLink>();
@@ -137,7 +133,6 @@ namespace SyncEd.Network.Tcp
 				links.ForEach(p => p.Dispose());
 			links = new List<TcpLink>();
 			ownIPWaitHandle.Dispose();
-			repairModeWaitHandle.Dispose();
 		}
 
 		public void SendPacket(object packet)
@@ -242,6 +237,10 @@ namespace SyncEd.Network.Tcp
 				handler(packet, peer, sendBack);
 		}
 
+		/// <summary>
+		/// Returns true if a peer has successfully connected (handshake ok and no timeout)
+		/// </summary>
+		/// <returns></returns>
 		internal bool WaitForTcpConnect()
 		{
 			//Console.WriteLine("Waiting for TCP connect");
@@ -255,14 +254,24 @@ namespace SyncEd.Network.Tcp
 				Debug.Assert(tcp.GetStream().Read(portBytes, 0, sizeof(int)) == sizeof(int)); // assume an int gets sent at once
 				int remotePort = BitConverter.ToInt32(portBytes, 0);
 
+				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
+				var peerEp = new IPEndPoint(address, remotePort);
+				var peer = new Peer() { EndPoint = peerEp };
+
+				lock (links)
+					if (links.Find(l => l.Peer.Equals(peer)) != null)
+					{
+						Console.WriteLine("Warning: Peer " + peer + " connected twice.");
+						tcp.Close();
+						return false;
+					}
+
 				// send own port
 				tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
 
-				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
-				var peerEp = new IPEndPoint(address, remotePort);
 				Console.WriteLine("TCP connect from " + peerEp + ". ESTABLISHED");
 				//Console.WriteLine("Connection established");
-				NewLinkEstablished(tcp, new Peer() { EndPoint = peerEp });
+				NewLinkEstablished(tcp, peer);
 				return true;
 			}
 			else
@@ -279,7 +288,7 @@ namespace SyncEd.Network.Tcp
 			UdpBroadcastObject(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort });
 
 			// wait for an answer
-			
+
 			var r = WaitForTcpConnect();
 			if (!r)
 				Console.WriteLine("No answer. I'm first owner");
@@ -364,8 +373,15 @@ namespace SyncEd.Network.Tcp
 
 		private void EstablishConnectionTo(IPEndPoint peerEP)
 		{
+			lock (links)
+				if (links.Find(l => l.Peer.Equals(peerEP)) != null)
+				{
+					Console.WriteLine("Tried to connet to peer twice.");
+					return;
+				}
+
 			var tcp = new TcpClient();
-			Console.Write("TCP connect to " + peerEP + ": ");
+			Console.WriteLine("TCP connect to " + peerEP + ": ");
 			try
 			{
 				tcp.Connect(peerEP);
@@ -385,7 +401,7 @@ namespace SyncEd.Network.Tcp
 			}
 			catch (Exception)
 			{
-				Console.WriteLine("Failed");
+				Console.WriteLine("Connect failed");
 				tcp.Close();
 				return;
 			}
@@ -402,7 +418,7 @@ namespace SyncEd.Network.Tcp
 				if (packet is FindPacket)
 					ProcessUdpFind(packet as FindPacket, endpoint);
 				else if (packet is PeerDiedPacket)
-					ProcessUdpPanic(packet as PeerDiedPacket);
+					ProcessUdpPeerDied(packet as PeerDiedPacket);
 				else
 					Console.WriteLine("Warning: Unrecognized Udp Packet");
 			}
@@ -418,7 +434,7 @@ namespace SyncEd.Network.Tcp
 				EstablishConnectionTo(new IPEndPoint(endpoint.Address, p.ListenPort));
 		}
 
-		private void ProcessUdpPanic(PeerDiedPacket p)
+		private void ProcessUdpPeerDied(PeerDiedPacket p)
 		{
 			if (InRepairMode)
 			{
@@ -447,63 +463,69 @@ namespace SyncEd.Network.Tcp
 			deadLink.Dispose();
 
 			Console.WriteLine("Preparing repair mode");
-			repairModeWaitHandle.Reset(); // prepare repair mode
 			lock (repairMasterPeers)
+			{
 				repairMasterPeers.Add(repairMasterPeer);
-			repairDeadPeer = deadLink.Peer;
-			InitiateRepair();
+
+				// prevent starting repair mode multiple times
+				if (!InRepairMode)
+				{
+					repairDeadPeer = deadLink.Peer;
+
+					// wait a little as some more master node requests might come in
+					Task.Delay(repairMasterNodeWaitMs).ContinueWith(t => Repair());
+				}
+			}
 		}
 
-		private void InitiateRepair()
+		private void Repair()
 		{
-			// wait a little as some more master node requests might come in
-			Task.Delay(repairMasterNodeWaitMs).ContinueWith(t =>
+			Console.WriteLine("Repair started. Masters:");
+			lock (repairMasterPeers)
+				foreach (var m in repairMasterPeers)
+					Console.WriteLine(m);
+
+			// if we are not the master node, connect to it
+			Peer masterNode = null;
+			lock (repairMasterPeers)
+				masterNode = repairMasterPeers.First();
+
+			Console.WriteLine("Chosen?: " + (masterNode == Self));
+
+			if (masterNode != Self)
 			{
-				Console.WriteLine("Repair started. Masters:");
-				lock (repairMasterPeers)
-					foreach (var m in repairMasterPeers)
-						Console.WriteLine(m);
+				Console.WriteLine("Connecting to repair master");
+				EstablishConnectionTo(masterNode.EndPoint);
+			}
+			else
+			{
+				Console.WriteLine("Waiting for incoming connections.");
+				var sw = Stopwatch.StartNew();
+				while (sw.ElapsedMilliseconds < repairReestablishWaitMs)
+					WaitForTcpConnect();
+				sw.Stop();
+			}
 
-				// if we are not the master node, connect to it
-				Peer masterNode = null;
-				lock (repairMasterPeers)
-					masterNode = repairMasterPeers.First();
+			// flush all packets buffered during repair
+			Console.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
+			foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
+				TcpBroadcastObject(poAndExclude.Item1, poAndExclude.Item2, true);
+			repairModeOutgoingTcpPacketBuffer.Clear();
 
-				Console.WriteLine("Chosen?: " + (masterNode == Self));
+			// notify the network
+			Console.WriteLine("Send peer lost notification");
+			if (masterNode == Self)
+			{
+				var lostPeerPacket = new LostPeerPacket() { };
+				FirePacketArrived(lostPeerPacket, Self, p => { });
+				TcpBroadcastObject(new PeerObject() { Peer = Self, Object = lostPeerPacket }, null, true);
+			}
 
-				if (masterNode != Self)
-					EstablishConnectionTo(masterNode.EndPoint);
-				else
-				{
-					var sw = Stopwatch.StartNew();
-					while (sw.ElapsedMilliseconds < repairReestablishWaitMs)
-						WaitForTcpConnect();
-					sw.Stop();
-				}
+			// disable repair mode
+			repairMasterPeers = new SortedSet<Peer>(new PeerComparer());
+			repairDeadPeer = null;
 
-				// flush all packets buffered during repair
-				Console.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
-				foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
-					TcpBroadcastObject(poAndExclude.Item1, poAndExclude.Item2, true);
-				repairModeOutgoingTcpPacketBuffer.Clear();
-
-				// notify the network
-				Console.WriteLine("Send peer lost notification");
-				if (masterNode == Self)
-				{
-					var lostPeerPacket = new LostPeerPacket() { };
-					FirePacketArrived(lostPeerPacket, Self, p => { });
-					TcpBroadcastObject(new PeerObject() { Peer = Self, Object = lostPeerPacket }, null, true);
-				}
-
-				repairDeadPeer = null;
-				repairMasterPeers = new SortedSet<Peer>(new PeerComparer());
-
-				// disable repair mode
-				repairModeWaitHandle.Set();
-
-				Console.WriteLine("Repair finished");
-			});
+			Console.WriteLine("Repair finished");
 		}
 	}
 }
