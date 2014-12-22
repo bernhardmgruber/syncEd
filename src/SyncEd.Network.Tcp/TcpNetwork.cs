@@ -10,6 +10,7 @@ using System.IO;
 using System.Net;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Collections;
 
 namespace SyncEd.Network.Tcp
 {
@@ -42,6 +43,30 @@ namespace SyncEd.Network.Tcp
 	{
 		internal Peer DeadPeer { get; set; }
 		internal Peer RepairPeer { get; set; }
+	}
+
+	internal class PeerComparer : IComparer<Peer>
+	{
+		private int CompareBytes(byte[] a, byte[] b)
+		{
+			for (int i = 0; i < Math.Min(a.Length, b.Length); i++)
+			{
+				int r = a[i] - b[i];
+				if (r != 0)
+					return r;
+				continue;
+			}
+
+			return a.Length - b.Length;
+		}
+
+		public int Compare(Peer a, Peer b)
+		{
+			int r = CompareBytes(a.EndPoint.Address.GetAddressBytes(), b.EndPoint.Address.GetAddressBytes());
+			if (r != 0)
+				return r;
+			return a.EndPoint.Port.CompareTo(b.EndPoint.Port);
+		}
 	}
 
 	public class TcpNetwork : INetwork
@@ -90,7 +115,7 @@ namespace SyncEd.Network.Tcp
 			ownIPWaitHandle = new ManualResetEvent(false);
 			repairModeWaitHandle = new ManualResetEvent(true);
 			repairModeOutgoingTcpPacketBuffer = new List<Tuple<PeerObject, TcpLink>>();
-			repairMasterPeers = new SortedSet<Peer>();
+			repairMasterPeers = new SortedSet<Peer>(new PeerComparer());
 			links = new List<TcpLink>();
 
 			tcpListener = FindTcpListener();
@@ -160,7 +185,7 @@ namespace SyncEd.Network.Tcp
 		private void PeerFailed(TcpLink link, byte[] failedData)
 		{
 			Console.WriteLine("PANIC - " + link + " is dead");
-			FoundDeadLink(link, Self);
+			RepairDeadLink(link, Self);
 
 			// inform peers that a link died
 			UdpBroadcastObject(new PeerDiedPacket() { DocumentName = documentName, DeadPeer = link.Peer, RepairPeer = Self });
@@ -215,6 +240,7 @@ namespace SyncEd.Network.Tcp
 
 		internal bool WaitForTcpConnect()
 		{
+			//Console.WriteLine("Waiting for TCP connect");
 			var peerTask = tcpListener.AcceptTcpClientAsync();
 			if (peerTask.Wait(linkEstablishTimeoutMs))
 			{
@@ -249,9 +275,9 @@ namespace SyncEd.Network.Tcp
 			UdpBroadcastObject(new FindPacket() { DocumentName = documentName, ListenPort = tcpListenPort });
 
 			// wait for an answer
-			//Console.WriteLine("Waiting for TCP connect");
+			
 			var r = WaitForTcpConnect();
-			if(!r)
+			if (!r)
 				Console.WriteLine("No answer. I'm first owner");
 			return r;
 		}
@@ -265,7 +291,7 @@ namespace SyncEd.Network.Tcp
 		{
 			// find and open TCP listening port for incoming connection
 			TcpListener l = null;
-			for (;tcpListenPort < 0xFFFF; tcpListenPort++)
+			for (; tcpListenPort < 0xFFFF; tcpListenPort++)
 			{
 				try
 				{
@@ -279,7 +305,7 @@ namespace SyncEd.Network.Tcp
 					continue;
 				}
 			}
-			if(l == null)
+			if (l == null)
 				throw new Exception("Failed to find a TCP port for listening");
 
 			Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
@@ -353,9 +379,9 @@ namespace SyncEd.Network.Tcp
 
 				tcp.ReceiveTimeout = 0;
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
-				Console.WriteLine("Failed: " + e);
+				Console.WriteLine("Failed");
 				tcp.Close();
 				return;
 			}
@@ -390,10 +416,14 @@ namespace SyncEd.Network.Tcp
 
 		private void ProcessUdpPanic(PeerDiedPacket p)
 		{
-			Console.WriteLine("Received panic packet");
-
-			if (InRepairMode && !p.DeadPeer.Equals(repairDeadPeer))
-				Console.WriteLine("FATAL: Incoming panic while currently repairing other node. This is not implemented =/");
+			if (InRepairMode)
+			{
+				if (!p.DeadPeer.Equals(repairDeadPeer))
+					Console.WriteLine("FATAL: Incoming panic while currently repairing other node. This is not implemented =/");
+				else
+					lock (repairMasterPeers)
+						repairMasterPeers.Add(p.RepairPeer);
+			}
 			else
 			{
 				// check all links if they are affected and kill affected ones
@@ -402,19 +432,20 @@ namespace SyncEd.Network.Tcp
 					deadLink = links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
 				Console.WriteLine("All links ok: " + (deadLink == null));
 				if (deadLink != null)
-					FoundDeadLink(deadLink, p.RepairPeer);
+					RepairDeadLink(deadLink, p.RepairPeer);
 			}
 		}
 
-		private void FoundDeadLink(TcpLink deadLink, Peer repairPeer)
+		private void RepairDeadLink(TcpLink deadLink, Peer repairMasterPeer)
 		{
-			lock(links)
+			lock (links)
 				links.Remove(deadLink);
 			deadLink.Dispose();
 
 			Console.WriteLine("Preparing repair mode");
 			repairModeWaitHandle.Reset(); // prepare repair mode
-			repairMasterPeers.Add(repairPeer);
+			lock (repairMasterPeers)
+				repairMasterPeers.Add(repairMasterPeer);
 			repairDeadPeer = deadLink.Peer;
 			InitiateRepair();
 		}
@@ -425,11 +456,14 @@ namespace SyncEd.Network.Tcp
 			Task.Delay(repairMasterNodeWaitMs).ContinueWith(t =>
 			{
 				Console.WriteLine("Repair started. Masters:");
-				foreach (var m in repairMasterPeers)
-					Console.WriteLine(m);
+				lock (repairMasterPeers)
+					foreach (var m in repairMasterPeers)
+						Console.WriteLine(m);
 
 				// if we are not the master node, connect to it
-				Peer masterNode = repairMasterPeers.First();
+				Peer masterNode = null;
+				lock (repairMasterPeers)
+					masterNode = repairMasterPeers.First();
 
 				Console.WriteLine("Chosen?: " + (masterNode == Self));
 
@@ -451,14 +485,15 @@ namespace SyncEd.Network.Tcp
 
 				// notify the network
 				Console.WriteLine("Send peer lost notification");
-				if (masterNode == Self) {
+				if (masterNode == Self)
+				{
 					var lostPeerPacket = new LostPeerPacket() { };
 					FirePacketArrived(lostPeerPacket, Self, p => { });
 					TcpBroadcastObject(new PeerObject() { Peer = Self, Object = lostPeerPacket }, null, true);
 				}
 
 				repairDeadPeer = null;
-				repairMasterPeers = new SortedSet<Peer>();
+				repairMasterPeers = new SortedSet<Peer>(new PeerComparer());
 
 				// disable repair mode
 				repairModeWaitHandle.Set();

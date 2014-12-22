@@ -46,10 +46,10 @@ namespace SyncEd.Network.Tcp
 					while (true)
 						FireObjectReceived(f.Deserialize(stream));
 				}
-				catch (Exception e)
+				catch (Exception)
 				{
 					// the fail handler has to run on another thread than the recv thread as this thread has to be shut down
-					Console.WriteLine("Receive in " + this + " failed: " + e);
+					//Console.WriteLine("Receive in " + this + " failed: " + e);
 					Task.Run(() => FireFailed());
 				}
 			});
