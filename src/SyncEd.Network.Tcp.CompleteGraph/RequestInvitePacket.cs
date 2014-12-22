@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 namespace SyncEd.Network.Tcp.CompleteGraph
 {
 	[Serializable]
-	internal class ConnectToPeerPacket
+	public class RequestInvitePacket
 	{
-		internal Peer Peer { get; set; }
+
 	}
 }

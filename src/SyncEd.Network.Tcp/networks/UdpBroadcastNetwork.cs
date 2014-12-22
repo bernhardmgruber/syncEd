@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -36,7 +37,7 @@ namespace SyncEd.Network.Tcp
 				{
 					try
 					{
-						//Console.WriteLine("Waiting for broadcast");
+						//Log.WriteLine("Waiting for broadcast");
 						var ep = new IPEndPoint(IPAddress.Any, broadcastPort);
 						byte[] bytes;
 						try
@@ -51,13 +52,13 @@ namespace SyncEd.Network.Tcp
 						if (bytes != null && bytes.Length != 0)
 						{
 							var packet = Utils.Deserialize(bytes);
-							//Console.WriteLine("Received broadcast from {0}: {1}", ep.Address, packet.DocumentName);
+							//Log.WriteLine("Received broadcast from {0}: {1}", ep.Address, packet.DocumentName);
 							objectReceived(packet, ep);
 						}
 					}
 					catch (Exception e)
 					{
-						Console.WriteLine("Exception in UDP broadcast listening: " + e.ToString());
+						Log.WriteLine("Exception in UDP broadcast listening: " + e.ToString());
 					}
 				}
 			});
@@ -73,7 +74,7 @@ namespace SyncEd.Network.Tcp
 
 		public void BroadcastObject(object o)
 		{
-			Console.WriteLine("UDP out: " + o);
+			Log.WriteLine("UDP out: " + o);
 			udp.Client.SendTo(Utils.Serialize(o), new IPEndPoint(IPAddress.Broadcast, broadcastPort));
 		}
 	}

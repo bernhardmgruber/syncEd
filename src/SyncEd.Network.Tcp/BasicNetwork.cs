@@ -58,7 +58,7 @@ namespace SyncEd.Network.Tcp
 
 		protected virtual void PeerFailed(TcpLink link, byte[] failedData)
 		{
-			Console.WriteLine("Lost connection to: " + link);
+			Log.WriteLine("Lost connection to: " + link);
 			lock (tcpNetwork.Links)
 				tcpNetwork.Links.Remove(link);
 			link.Dispose();
@@ -68,7 +68,7 @@ namespace SyncEd.Network.Tcp
 		{
 			var packet = (UdpObject)o;
 
-			Console.WriteLine("UDP in: " + o);
+			Log.WriteLine("UDP in: " + o);
 			if (packet.DocumentName == documentName)
 			{
 				if (packet.Object is FindPacket)
@@ -77,19 +77,19 @@ namespace SyncEd.Network.Tcp
 					ProcessCustomUdpObject(endpoint, packet);
 			}
 			else
-				Console.WriteLine("Document mismatch");
+				Log.WriteLine("Document mismatch");
 		}
 
 		private void ProcessTcpObject(TcpLink link, object o)
 		{
 			var po = o as TcpObject;
-			Console.WriteLine("TCP in (" + po.Peer.EndPoint + "): " + po);
 
 			if(ProcessCustomTcpObject(link, po))
 				FirePacketArrived(po.Object, po.Peer, p =>
 				{
-					Console.WriteLine("TCP out (" + link + "): " + p);
-					link.Send(Utils.Serialize(new TcpObject() { Peer = Self, Object = p }));
+					var oo = new TcpObject() { Peer = Self, Object = p };
+					Log.WriteLine("TCP out (" + link.Peer + "): " + oo);
+					link.Send(Utils.Serialize(oo));
 				});
 		}
 
@@ -110,20 +110,20 @@ namespace SyncEd.Network.Tcp
 		private bool FindPeer()
 		{
 			// send a broadcast with the document name into the network
-			Console.WriteLine("Broadcasting for " + documentName);
+			Log.WriteLine("Broadcasting for " + documentName);
 			udpNetwork.BroadcastObject(new UdpObject() { DocumentName = documentName, Object = new FindPacket() { ListenPort = tcpNetwork.ListenPort } });
 
 			// wait for an answer
 			var r = tcpNetwork.WaitForTcpConnect();
 			if (!r)
-				Console.WriteLine("No answer. I'm first owner");
+				Log.WriteLine("No answer. I'm first owner");
 			return r;
 		}
 
 		private void OwnIPDetected(IPEndPoint address)
 		{
 			Self = new Peer() { EndPoint = address };
-			Console.WriteLine("Own IP determined as " + address);
+			Log.WriteLine("Own IP determined as " + address);
 			ownIPWaitHandle.Set();
 		}
 	}

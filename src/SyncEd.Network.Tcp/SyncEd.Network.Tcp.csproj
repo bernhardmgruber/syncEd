@@ -38,6 +38,7 @@
   <ItemGroup>
     <Compile Include="BasicNetwork.cs" />
     <Compile Include="packets\FindPacket.cs" />
+    <Compile Include="utility\Log.cs" />
     <Compile Include="utility\PeerComparer.cs" />
     <Compile Include="networks\TcpBroadcastNetwork.cs" />
     <Compile Include="networks\TcpLink.cs" />

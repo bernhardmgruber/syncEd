@@ -13,8 +13,8 @@ namespace SyncEd.Network.Tcp
 	{
 		private TcpListener listener;
 
-		private const int linkEstablishTimeoutMs = 500;
-		private const int linkHandshakeTimeoutMs = 200;
+		public const int acceptTimeoutMs = 500;
+		public const int connectTimeoutMs = 200;
 
 		//private Action<TcpClient, Peer> newLinkEstablished;
 		private Action<TcpLink, byte[]> linkFailed;
@@ -56,24 +56,24 @@ namespace SyncEd.Network.Tcp
 			if (listener == null)
 				throw new Exception("Failed to find a TCP port for listening");
 
-			Console.WriteLine("Bound TCP listener to port " + tcpListenPort);
+			Log.WriteLine("Bound TCP listener to port " + tcpListenPort);
 		}
 
 		public Peer EstablishConnectionTo(IPEndPoint peerEP)
 		{
 			lock (Links)
-				if (Links.Find(l => l.Peer.Equals(peerEP)) != null)
+				if (Links.Find(l => l.Peer.EndPoint.Equals(peerEP)) != null)
 				{
-					Console.WriteLine("Tried to connet to peer twice.");
+					Log.WriteLine("Tried to connet to peer twice.");
 					return null;
 				}
 
 			var tcp = new TcpClient();
-			Console.WriteLine("TCP connect to " + peerEP + ": ");
+			Log.WriteLine("TCP connect to " + peerEP + ": ");
 			try
 			{
 				tcp.Connect(peerEP);
-				tcp.ReceiveTimeout = linkHandshakeTimeoutMs;
+				tcp.ReceiveTimeout = connectTimeoutMs;
 
 				// send own port
 				tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
@@ -89,12 +89,12 @@ namespace SyncEd.Network.Tcp
 			}
 			catch (Exception)
 			{
-				Console.WriteLine("Connect failed. Timeout?");
+				Log.WriteLine("Connect failed. Timeout?");
 				tcp.Close();
 				return null;
 			}
 
-			Console.WriteLine("ESTABLISHED");
+			Log.WriteLine("ESTABLISHED");
 			var peer = new Peer() { EndPoint = peerEP };
 			NewLinkEstablished(tcp, peer);
 			return peer;
@@ -106,41 +106,57 @@ namespace SyncEd.Network.Tcp
 		/// <returns></returns>
 		public bool WaitForTcpConnect()
 		{
-			var peerTask = listener.AcceptTcpClientAsync();
-			Console.WriteLine("Waiting for TCP connect");
-			if (peerTask.Wait(linkEstablishTimeoutMs))
+			lock (listener)
 			{
-				var tcp = peerTask.Result;
+				var peerTask = listener.AcceptTcpClientAsync();
+				Log.WriteLine("Waiting for TCP connect");
+				if (peerTask.Wait(acceptTimeoutMs))
+				{
+					var tcp = peerTask.Result;
+					peerTask.Dispose();
 
-				// receive peer's port
-				byte[] portBytes = new byte[sizeof(int)];
-				Debug.Assert(tcp.GetStream().Read(portBytes, 0, sizeof(int)) == sizeof(int), "sizeof(int) in WaitForConnect"); // assume an int gets sent at once
-				int remotePort = BitConverter.ToInt32(portBytes, 0);
+					// receive peer's port
+					byte[] portBytes = new byte[sizeof(int)];
+					Debug.Assert(tcp.GetStream().Read(portBytes, 0, sizeof(int)) == sizeof(int), "sizeof(int) in WaitForConnect"); // assume an int gets sent at once
+					int remotePort = BitConverter.ToInt32(portBytes, 0);
 
-				var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
-				var peerEp = new IPEndPoint(address, remotePort);
-				var peer = new Peer() { EndPoint = peerEp };
+					var address = ((IPEndPoint)tcp.Client.RemoteEndPoint).Address;
+					var peerEp = new IPEndPoint(address, remotePort);
+					var peer = new Peer() { EndPoint = peerEp };
 
-				lock (Links)
-					if (Links.Find(l => l.Peer.Equals(peer)) != null)
-					{
-						Console.WriteLine("Warning: Peer " + peer + " connected twice.");
-						tcp.Close();
-						return false;
-					}
+					lock (Links)
+						if (Links.Find(l => l.Peer.Equals(peer)) != null)
+						{
+							Log.WriteLine("Warning: Peer " + peer + " connected twice.");
+							tcp.Close();
+							return false;
+						}
 
-				// send own port
-				tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
+					// send own port
+					tcp.GetStream().Write(BitConverter.GetBytes(tcpListenPort), 0, sizeof(int));
 
-				Console.WriteLine("TCP connect from " + peerEp + ". ESTABLISHED");
-				//Console.WriteLine("Connection established");
-				NewLinkEstablished(tcp, peer);
-				return true;
+					Log.WriteLine("TCP connect from " + peerEp + ". ESTABLISHED");
+					//Log.WriteLine("Connection established");
+					NewLinkEstablished(tcp, peer);
+					return true;
+				}
+				else
+				{
+					Log.WriteLine("Timeout");
+					return false;
+				}
 			}
-			else
+		}
+
+		public void KillPending()
+		{
+			lock (listener)
 			{
-				Console.WriteLine("Timeout");
-				return false;
+				while (listener.Pending())
+				{
+					listener.AcceptSocket().Close();
+					Log.WriteLine("Killed pending connection");
+				}
 			}
 		}
 
@@ -157,12 +173,14 @@ namespace SyncEd.Network.Tcp
 
 		public void MulticastObject(object o, Predicate<TcpLink> pred)
 		{
-			Console.WriteLine("TCP out (" + Links.Count + "): " + o);
 			byte[] data = Utils.Serialize(o);
 			lock (Links)
 				foreach (TcpLink l in Links)
 					if (pred(l))
+					{
+						Log.WriteLine("TCP out (" + l.Peer + "): " + o);
 						l.Send(data);
+					}
 		}
 
 		public void BroadcastObject(object o)

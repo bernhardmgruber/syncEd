@@ -14,7 +14,7 @@ namespace SyncEd.Network.Tcp
 
 		public override string ToString()
 		{
-			return "TcpObject {" + Peer + ", " + Object + "}";
+			return "{" + Peer + ", " + Object.GetType().Name + "}";
 		}
 	}
 }

@@ -46,7 +46,7 @@ namespace SyncEd.Network.Tcp
 				catch (Exception)
 				{
 					// the fail handler has to run on another thread than the recv thread as this thread has to be shut down
-					//Console.WriteLine("Receive in " + this + " failed: " + e);
+					//Log.WriteLine("Receive in " + this + " failed: " + e);
 					Task.Run(() => FireFailed());
 				}
 			});
@@ -55,6 +55,7 @@ namespace SyncEd.Network.Tcp
 
 		private void FireObjectReceived(object o)
 		{
+			Log.WriteLine("TCP in: " + o);
 			objectReceived(this, o);
 		}
 
@@ -82,7 +83,7 @@ namespace SyncEd.Network.Tcp
 		{
 			if (!disposed)
 			{
-				Console.WriteLine("Closing Link " + this);
+				Log.WriteLine("Closing Link " + this);
 				disposed = true;
 				stream.Dispose(); // closes socket and causes receiver thread to FireFailed() if it is still running
 				recvThread.Join();

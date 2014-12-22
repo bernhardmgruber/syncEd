@@ -52,7 +52,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 		{
 			if (!overrideRepair && InRepairMode)
 			{
-				Console.WriteLine("Buffered: " + po.Object);
+				Log.WriteLine("Buffered: " + po.Object);
 				repairModeOutgoingTcpPacketBuffer.Add(Tuple.Create(po, exclude));
 			}
 			else
@@ -81,7 +81,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 			if (o.Object is PeerDiedPacket)
 				ProcessUdpPeerDied(o.Object as PeerDiedPacket);
 			else
-				Console.WriteLine("Warning: Unrecognized Udp Packet");
+				Log.WriteLine("Warning: Unrecognized Udp Packet");
 		}
 
 		protected override void ConnectedPeer(Peer ep)
@@ -93,7 +93,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 			if (InRepairMode)
 			{
 				if (!p.DeadPeer.Equals(repairDeadPeer))
-					Console.WriteLine("FATAL: Incoming panic while currently repairing other node. This is not implemented =/");
+					Log.WriteLine("FATAL: Incoming panic while currently repairing other node. This is not implemented =/");
 				else
 					lock (repairMasterPeers)
 						repairMasterPeers.Add(p.RepairPeer);
@@ -104,7 +104,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 				TcpLink deadLink = null;
 				lock (tcpNetwork.Links)
 					deadLink = tcpNetwork.Links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
-				Console.WriteLine("All links ok: " + (deadLink == null));
+				Log.WriteLine("All links ok: " + (deadLink == null));
 				if (deadLink != null)
 				{
 					lock (tcpNetwork.Links)
@@ -117,7 +117,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 
 		private void RepairDeadLink(TcpLink deadLink, Peer repairMasterPeer)
 		{
-			Console.WriteLine("Preparing repair mode");
+			Log.WriteLine("Preparing repair mode");
 			lock (repairMasterPeers)
 			{
 				repairMasterPeers.Add(repairMasterPeer);
@@ -135,26 +135,26 @@ namespace SyncEd.Network.Tcp.SpanningTree
 
 		private void Repair()
 		{
-			Console.WriteLine("Repair started. Masters:");
+			Log.WriteLine("Repair started. Masters:");
 			lock (repairMasterPeers)
 				foreach (var m in repairMasterPeers)
-					Console.WriteLine(m);
+					Log.WriteLine(m);
 
 			// if we are not the master node, connect to it
 			Peer masterNode = null;
 			lock (repairMasterPeers)
 				masterNode = repairMasterPeers.First();
 
-			Console.WriteLine("Chosen?: " + (masterNode == Self));
+			Log.WriteLine("Chosen?: " + (masterNode == Self));
 
 			if (masterNode != Self)
 			{
-				Console.WriteLine("Connecting to repair master");
+				Log.WriteLine("Connecting to repair master");
 				tcpNetwork.EstablishConnectionTo(masterNode.EndPoint);
 			}
 			else
 			{
-				Console.WriteLine("Waiting for incoming connections.");
+				Log.WriteLine("Waiting for incoming connections.");
 				var sw = Stopwatch.StartNew();
 				while (sw.ElapsedMilliseconds < repairReestablishWaitMs)
 					tcpNetwork.WaitForTcpConnect();
@@ -162,13 +162,13 @@ namespace SyncEd.Network.Tcp.SpanningTree
 			}
 
 			// flush all packets buffered during repair
-			Console.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
+			Log.WriteLine("Flushing " + repairModeOutgoingTcpPacketBuffer.Count + " packets");
 			foreach (var poAndExclude in repairModeOutgoingTcpPacketBuffer)
 				TcpBroadcastObject(poAndExclude.Item1, poAndExclude.Item2, true);
 			repairModeOutgoingTcpPacketBuffer.Clear();
 
 			// notify the network
-			Console.WriteLine("Send peer lost notification");
+			Log.WriteLine("Send peer lost notification");
 			if (masterNode == Self)
 			{
 				var lostPeerPacket = new LostPeerPacket() { };
@@ -181,7 +181,7 @@ namespace SyncEd.Network.Tcp.SpanningTree
 				repairMasterPeers.Clear();
 			repairDeadPeer = null;
 
-			Console.WriteLine("Repair finished");
+			Log.WriteLine("Repair finished");
 		}
 	}
 }

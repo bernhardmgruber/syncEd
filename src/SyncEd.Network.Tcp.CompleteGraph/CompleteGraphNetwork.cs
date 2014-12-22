@@ -1,6 +1,7 @@
 ﻿using SyncEd.Network.Packets;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -17,8 +18,13 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 		{
 			connectFinishedEvent = new ManualResetEvent(false);
 			var found = base.Start(documentName);
-			if(found)
+			if (found)
+			{
+				Thread.Sleep(TcpBroadcastNetwork.connectTimeoutMs);
+				tcpNetwork.KillPending();
+				tcpNetwork.BroadcastObject(new TcpObject() { Peer = Self, Object = new RequestInvitePacket() });
 				connectFinishedEvent.WaitOne(); // wait to receive PeersToConnectPacket and connect to full graph before proceeding
+			}
 			connectFinishedEvent.Dispose();
 			return found;
 		}
@@ -31,21 +37,52 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 
 		protected override bool ProcessCustomTcpObject(TcpLink link, TcpObject o)
 		{
-			if (o.Object is ExpectNewPeerPacket)
+			if (o.Object is ConnectToPeerPacket)
 			{
-				var p = (o.Object as ExpectNewPeerPacket);
-				if (!tcpNetwork.WaitForTcpConnect())
-					Console.WriteLine("FATAL: Expected incoming connection from: " + p.Peer);
+				var p = o.Object as ConnectToPeerPacket;
+				if (tcpNetwork.EstablishConnectionTo(p.Peer.EndPoint) == null)
+					Log.WriteLine("Warning: Could not connect new peer " + p.Peer);
+				//if (!tcpNetwork.WaitForTcpConnect())
+				//	Log.WriteLine("FATAL: Expected incoming connection from: " + p.Peer);
 			}
-			else if (o.Object is PeersToConnectPacket)
+			else if (o.Object is PeerCountPacket)
 			{
-				var p = (o.Object as PeersToConnectPacket);
-				Console.WriteLine("Connecting to " + p.Peers.Length + " peers");
-				foreach(var peer in p.Peers)
-					if (tcpNetwork.EstablishConnectionTo(peer.EndPoint) == null)
-						Console.WriteLine("FATAL: Could not connect to peer: " + peer);
-				Console.WriteLine("Established connections to " + p.Peers.Length + " peers");
+				var p = o.Object as PeerCountPacket;
+
+				while (true)
+				{
+					lock(tcpNetwork.Links)
+						if (tcpNetwork.Links.Count >= p.Count)
+						{
+							Debug.Assert(tcpNetwork.Links.Count == p.Count, "Too many connections. There must be a duplicate.");
+							break;
+						}
+
+					Debug.Assert(tcpNetwork.WaitForTcpConnect(), "failed to wait for a connect during network construction");
+				}
+
+				//Log.WriteLine("Connecting to " + p.Peers.Length + " peers");
+				//foreach(var peer in p.Peers)
+				//	if (tcpNetwork.EstablishConnectionTo(peer.EndPoint) == null)
+				//		Log.WriteLine("FATAL: Could not connect to peer: " + peer);
+				//Log.WriteLine("Established connections to " + p.Peers.Length + " peers");
 				connectFinishedEvent.Set();
+			}
+			else if (o.Object is RequestInvitePacket)
+			{
+				var p = o.Object as RequestInvitePacket;
+
+				Log.WriteLine("Inviting new peer to network: " + o.Peer);
+
+				int count = 0;
+				lock (tcpNetwork.Links)
+					count = tcpNetwork.Links.Count;
+
+				// tell new peer for how many connections it should have
+				tcpNetwork.MulticastObject(new TcpObject() { Peer = Self, Object = new PeerCountPacket() { Count = count } }, l => l.Peer.Equals(o.Peer));
+
+				// tell other peers to connet to the new peer
+				tcpNetwork.MulticastObject(new TcpObject() { Peer = Self, Object = new ConnectToPeerPacket() { Peer = o.Peer } }, l => !l.Peer.Equals(o.Peer));
 			}
 			else
 				return true;
@@ -64,15 +101,6 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 
 		protected override void ConnectedPeer(Peer peer)
 		{
-			Peer[] peers = null;
-			lock (tcpNetwork.Links)
-				peers = tcpNetwork.Links.Where(l => !l.Peer.Equals(peer)).Select(l => l.Peer).ToArray();
-
-			// tell new peer to which peers he has to connect
-			tcpNetwork.MulticastObject(new TcpObject() { Peer = Self, Object = new PeersToConnectPacket() { Peers = peers } }, l => l.Peer.Equals(peer));
-
-			// tell other peers to except a connection from this new peer
-			tcpNetwork.MulticastObject(new TcpObject() { Peer = Self, Object = new ExpectNewPeerPacket() { Peer = peer } }, l => !l.Peer.Equals(peer));
 		}
 	}
 }

@@ -14,7 +14,7 @@ namespace SyncEd.Network.Tcp
 
 		public override string ToString()
 		{
-			return "UdpObject {" + DocumentName + ", " + Object + "}";
+			return "{" + DocumentName + ", " + Object.GetType().Name + "}";
 		}
 	}
 }
