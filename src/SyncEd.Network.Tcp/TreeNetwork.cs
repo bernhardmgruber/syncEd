@@ -32,16 +32,11 @@ namespace SyncEd.Network.Tcp
 		private const int broadcastPort = 1337; // UDP port for sending broadcasts
 
 		private UdpBroadcastNetwork udpNetwork;
-		private TcpEstablisher tcpEstablisher;
+		private TcpBroadcastNetwork tcpNetwork;
 
 		private ManualResetEvent ownIPWaitHandle;
 
 		private BinaryFormatter formatter = new BinaryFormatter();
-
-		public TreeNetwork()
-		{
-			udpNetwork = new UdpBroadcastNetwork(broadcastPort, (o, e) => ProcessUdpPacket((UdpPacket)o, e));
-		}
 
 		#region public interface
 		public Peer Self { get; private set; }
@@ -57,8 +52,8 @@ namespace SyncEd.Network.Tcp
 			repairModeOutgoingTcpPacketBuffer = new List<Tuple<PeerObject, TcpLink>>();
 			repairMasterPeers = new SortedSet<Peer>(new PeerComparer());
 
-			udpNetwork.Start();
-			tcpEstablisher = new TcpEstablisher((l, o) => TcpObjectReveived(l, o), (l, d) => PeerFailed(l, d));
+			udpNetwork = new UdpBroadcastNetwork(broadcastPort, (o, e) => ProcessUdpPacket((UdpPacket)o, e));
+			tcpNetwork = new TcpBroadcastNetwork((l, o) => TcpObjectReveived(l, o), (l, d) => PeerFailed(l, d));
 
 			bool found = FindPeer();
 			ownIPWaitHandle.WaitOne(); // wait for listener thread to receive self broadcast and determine own IP
@@ -68,7 +63,7 @@ namespace SyncEd.Network.Tcp
 		public void Stop()
 		{
 			udpNetwork.Stop();
-			tcpEstablisher.Dispose();
+			tcpNetwork.Dispose();
 
 			ownIPWaitHandle.Dispose();
 		}
@@ -87,10 +82,10 @@ namespace SyncEd.Network.Tcp
 		{
 			// send a broadcast with the document name into the network
 			Console.WriteLine("Broadcasting for " + documentName);
-			udpNetwork.BroadcastObject(new FindPacket() { DocumentName = documentName, ListenPort = tcpEstablisher.ListenPort });
+			udpNetwork.BroadcastObject(new FindPacket() { DocumentName = documentName, ListenPort = tcpNetwork.ListenPort });
 
 			// wait for an answer
-			var r = tcpEstablisher.WaitForTcpConnect();
+			var r = tcpNetwork.WaitForTcpConnect();
 			if (!r)
 				Console.WriteLine("No answer. I'm first owner");
 			return r;
@@ -120,7 +115,7 @@ namespace SyncEd.Network.Tcp
 				repairModeOutgoingTcpPacketBuffer.Add(Tuple.Create(po, exclude));
 			}
 			else
-				tcpEstablisher.BroadcastObject(po, exclude);
+				tcpNetwork.BroadcastObject(po, exclude);
 		}
 
 		private void TcpObjectReveived(TcpLink link, object o)
@@ -164,10 +159,10 @@ namespace SyncEd.Network.Tcp
 
 		private void ProcessUdpFind(FindPacket p, IPEndPoint endpoint)
 		{
-			if (Utils.IsLocalAddress(endpoint.Address) && p.ListenPort == tcpEstablisher.ListenPort)
-				OwnIPDetected(new IPEndPoint(endpoint.Address, tcpEstablisher.ListenPort));
+			if (Utils.IsLocalAddress(endpoint.Address) && p.ListenPort == tcpNetwork.ListenPort)
+				OwnIPDetected(new IPEndPoint(endpoint.Address, tcpNetwork.ListenPort));
 			else
-				tcpEstablisher.EstablishConnectionTo(new IPEndPoint(endpoint.Address, p.ListenPort));
+				tcpNetwork.EstablishConnectionTo(new IPEndPoint(endpoint.Address, p.ListenPort));
 		}
 
 		private void ProcessUdpPeerDied(PeerDiedPacket p)
@@ -184,8 +179,8 @@ namespace SyncEd.Network.Tcp
 			{
 				// check all links if they are affected and kill affected ones
 				TcpLink deadLink = null;
-				lock (tcpEstablisher.Links)
-					deadLink = tcpEstablisher.Links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
+				lock (tcpNetwork.Links)
+					deadLink = tcpNetwork.Links.Where(l => l.Peer.Equals(p.DeadPeer)).FirstOrDefault();
 				Console.WriteLine("All links ok: " + (deadLink == null));
 				if (deadLink != null)
 					RepairDeadLink(deadLink, p.RepairPeer);
@@ -194,8 +189,8 @@ namespace SyncEd.Network.Tcp
 
 		private void RepairDeadLink(TcpLink deadLink, Peer repairMasterPeer)
 		{
-			lock (tcpEstablisher.Links)
-				tcpEstablisher.Links.Remove(deadLink);
+			lock (tcpNetwork.Links)
+				tcpNetwork.Links.Remove(deadLink);
 			deadLink.Dispose();
 
 			Console.WriteLine("Preparing repair mode");
@@ -231,14 +226,14 @@ namespace SyncEd.Network.Tcp
 			if (masterNode != Self)
 			{
 				Console.WriteLine("Connecting to repair master");
-				tcpEstablisher.EstablishConnectionTo(masterNode.EndPoint);
+				tcpNetwork.EstablishConnectionTo(masterNode.EndPoint);
 			}
 			else
 			{
 				Console.WriteLine("Waiting for incoming connections.");
 				var sw = Stopwatch.StartNew();
 				while (sw.ElapsedMilliseconds < repairReestablishWaitMs)
-					tcpEstablisher.WaitForTcpConnect();
+					tcpNetwork.WaitForTcpConnect();
 				sw.Stop();
 			}
 

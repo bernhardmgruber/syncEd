@@ -20,9 +20,11 @@ namespace SyncEd.Network.Tcp
 		{
 			this.broadcastPort = broadcastPort;
 			this.objectReceived = objectReceived;
+
+			Start();
 		}
 
-		public void Start()
+		private void Start()
 		{
 			udp = new UdpClient();
 			udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);

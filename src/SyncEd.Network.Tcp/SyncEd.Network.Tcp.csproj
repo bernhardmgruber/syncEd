@@ -38,7 +38,7 @@
   <ItemGroup>
     <Compile Include="Packets.cs" />
     <Compile Include="PeerComparer.cs" />
-    <Compile Include="TcpEstablisher.cs" />
+    <Compile Include="TcpBroadcastNetwork.cs" />
     <Compile Include="TreeNetwork.cs" />
     <Compile Include="TcpLink.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

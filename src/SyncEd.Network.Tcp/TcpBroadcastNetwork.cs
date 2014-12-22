@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace SyncEd.Network.Tcp
 {
-	public class TcpEstablisher : IDisposable
+	public class TcpBroadcastNetwork : IDisposable
 	{
 		private TcpListener listener;
 
@@ -25,7 +25,7 @@ namespace SyncEd.Network.Tcp
 
 		public List<TcpLink> Links { get; private set; }
 
-		public TcpEstablisher(Action<TcpLink, object> objectReceived, Action<TcpLink, byte[]> linkFailed)
+		public TcpBroadcastNetwork(Action<TcpLink, object> objectReceived, Action<TcpLink, byte[]> linkFailed)
 		{
 			//this.newLinkEstablished = newLinkEstablished;
 			this.linkFailed = linkFailed;
