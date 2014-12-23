@@ -41,14 +41,7 @@ namespace SyncEd.Editor
         public string DocumentText
         {
             get { return documentText; }
-            set
-            {
-                if (documentText == value)
-                    return;
-                int? oldCaret = CaretIndex;
-                SetProperty(ref documentText, value);
-                CaretIndex = oldCaret;
-            }
+            set { SetProperty(ref documentText, value); }
         }
         private string documentText = String.Empty;
 
@@ -66,17 +59,6 @@ namespace SyncEd.Editor
         }
         private bool isInForbiddenTextRange;
 
-        public int? CaretIndex
-        {
-            get { return caretIndex; }
-            set
-            {
-                if (CaretIndex == value)
-                    return;
-                ChangeCaretPos(value);
-                SetProperty(ref caretIndex, value);
-            }
-        }
         private int? caretIndex;
 
         public ObservableCollection<Tuple<int, int, Color>> HighlightedRanges
@@ -147,6 +129,7 @@ namespace SyncEd.Editor
         }
         public void ChangeCaretPos(int? pos)
         {
+            caretIndex = pos;
             if (!processingChangeFromNetwork)
                 document.ChangeCaretPos(pos);
             CheckAllowEditing();
@@ -169,9 +152,9 @@ namespace SyncEd.Editor
 
         private void CheckAllowEditing()
         {
-            IsInForbiddenTextRange = CaretIndex.HasValue &&
-                CaretIndex != 0 && CaretIndex != DocumentText.Length // allways allow editing on the begin and end of the document
-                && HighlightedRanges.Any(r => CaretIndex >= r.Item1 && CaretIndex <= r.Item2);
+            IsInForbiddenTextRange = caretIndex.HasValue &&
+                caretIndex != 0 && caretIndex != DocumentText.Length // allways allow editing on the begin and end of the document
+                && HighlightedRanges.Any(r => caretIndex >= r.Item1 && caretIndex <= r.Item2);
         }
     }
 }
