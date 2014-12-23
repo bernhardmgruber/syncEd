@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="FullSignature">
+  <Class Name="SyncEd.Network.AutoForwardAttribute" Collapsed="true">
+    <Position X="8.5" Y="3.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>AutoForwardAttribute.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Peer">
+    <Position X="7.5" Y="0.5" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAQAAEgAAAAAAAAAAAAIAAAAAAAAAAAAA=</HashCode>
+      <FileName>Peer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.AddTextPacket">
+    <Position X="6.75" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAgAA=</HashCode>
+      <FileName>Packets\AddTextPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.DeleteTextPacket">
+    <Position X="6.75" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAgAA=</HashCode>
+      <FileName>Packets\DeleteTextPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.DocumentPacket">
+    <Position X="10.25" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\DocumentPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.LostPeerPacket" Collapsed="true">
+    <Position X="5" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\LostPeerPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.NewPeerPacket" Collapsed="true">
+    <Position X="5" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\NewPeerPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.PeerCountPacket">
+    <Position X="8.5" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\PeerCountPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.QueryDocumentPacket" Collapsed="true">
+    <Position X="10.25" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\QueryDocumentPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.QueryPeerCountPacket" Collapsed="true">
+    <Position X="8.5" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\QueryPeerCountPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="SyncEd.Network.Packets.UpdateCaretPacket">
+    <Position X="12" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Packets\UpdateCaretPacket.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Interface Name="SyncEd.Network.INetwork">
+    <Position X="5" Y="0.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAQAAAAACAAAAAAAAgBAAAAAAAAAAAAIAAAAAAAAAA=</HashCode>
+      <FileName>INetwork.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Delegate Name="SyncEd.Network.SendBackFunc">
+    <Position X="10.25" Y="2" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>INetwork.cs</FileName>
+    </TypeIdentifier>
+  </Delegate>
+  <Delegate Name="SyncEd.Network.PacketHandler">
+    <Position X="10.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAABQAAAAAgAAAAAAAAAAAAA=</HashCode>
+      <FileName>INetwork.cs</FileName>
+    </TypeIdentifier>
+  </Delegate>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
