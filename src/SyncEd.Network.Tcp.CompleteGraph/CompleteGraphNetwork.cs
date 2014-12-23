@@ -32,7 +32,13 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 		public override void SendPacket(object packet)
 		{
 			base.SendPacket(packet);
-			tcpNetwork.BroadcastObject(new TcpObject() { Peer = Self, Object = packet });
+			if (packet.GetType().IsDefined(typeof(AutoForwardAttribute), true))
+				tcpNetwork.BroadcastObject(new TcpObject() { Peer = Self, Object = packet });
+			else
+			{
+				bool first = true;
+				tcpNetwork.MulticastObject(new TcpObject() { Peer = Self, Object = packet }, l => { var r = first; if (first) first = false; return r; });
+			}
 		}
 
 		protected override bool ProcessCustomTcpObject(TcpLink link, TcpObject o)
