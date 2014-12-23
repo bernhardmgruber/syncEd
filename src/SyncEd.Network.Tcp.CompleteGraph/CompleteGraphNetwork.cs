@@ -48,8 +48,6 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 				var p = o.Object as ConnectToPeerPacket;
 				if (tcpNetwork.EstablishConnectionTo(p.Peer.EndPoint) == null)
 					Log.WriteLine("Warning: Could not connect new peer " + p.Peer);
-				//if (!tcpNetwork.WaitForTcpConnect())
-				//	Log.WriteLine("FATAL: Expected incoming connection from: " + p.Peer);
 			}
 			else if (o.Object is PeerCountPacket)
 			{
@@ -67,11 +65,6 @@ namespace SyncEd.Network.Tcp.CompleteGraph
 					Debug.Assert(tcpNetwork.WaitForTcpConnect(), "failed to wait for a connect during network construction");
 				}
 
-				//Log.WriteLine("Connecting to " + p.Peers.Length + " peers");
-				//foreach(var peer in p.Peers)
-				//	if (tcpNetwork.EstablishConnectionTo(peer.EndPoint) == null)
-				//		Log.WriteLine("FATAL: Could not connect to peer: " + peer);
-				//Log.WriteLine("Established connections to " + p.Peers.Length + " peers");
 				connectFinishedEvent.Set();
 			}
 			else if (o.Object is RequestInvitePacket)

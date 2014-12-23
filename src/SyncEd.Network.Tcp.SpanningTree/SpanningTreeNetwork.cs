@@ -37,11 +37,6 @@ namespace SyncEd.Network.Tcp.SpanningTree
 			return base.Start(documentName);
 		}
 
-		public override void Stop()
-		{
-			base.Stop();
-		}
-
 		public override void SendPacket(object packet)
 		{
 			base.SendPacket(packet);
